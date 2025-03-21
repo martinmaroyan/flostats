@@ -1,21 +1,22 @@
 import { nprogress } from "@mantine/nprogress";
 import React from "react";
-import { Card, Pagination, Skeleton, Stack, Text, Title } from "@mantine/core";
+import { Button, Card, Pagination, Skeleton, Stack, Text, Title } from "@mantine/core";
 import dayjs from "dayjs";
 
 import styles from "./SearchResults.module.css";
-import { NodeResult, SearchResultsTyped } from "floapi/api.flowrestling.org";
+import { fetchFromNode, NodeResult, searchByName, SearchResultPerson, SearchResultPersonUseOfp, SearchResults, SearchResultsTyped } from "floapi/api.flowrestling.org";
 
 const PAGE_SIZE = 10;
 
 export type SearchResultsPageProps = {
 	active: boolean;
+	setActive: (active: boolean) => void;
 	name: string;
-	broad: boolean;
-	onSelect: (id: number, name: string) => void;
+	broad?: boolean;
+	onSelect: (id: string, name: string) => void;
 }
 
-export default function SearchResultsPage({ active, name, broad, onSelect }: SearchResultsPageProps) {
+export default function SearchResultsPage({ active = false, setActive, name, broad = false, onSelect }: SearchResultsPageProps) {
 	const [narrowResults, setNarrowResults] = React.useState<SearchResultsTyped<false> | null>(null);
 	const [broadResults, setBroadResults] = React.useState<SearchResultsTyped<true> | null>(null);
 
@@ -26,6 +27,7 @@ export default function SearchResultsPage({ active, name, broad, onSelect }: Sea
 
 	React.useEffect(() => {
 		if (!name || !active) return;
+		setActive?.(false);
 		const page = 1; //parseInt((searchParams.get("page") ?? "1"));
 
 		setBroadResults(null);
@@ -46,7 +48,7 @@ export default function SearchResultsPage({ active, name, broad, onSelect }: Sea
 		if (useOfp) setLoadingExtra(true);
 
 		// Data fetched with OFP set to true is ordered correctly
-		const orderData = await FloAPI.searchByName(name, {
+		const orderData = await searchByName(name, {
 			limit: PAGE_SIZE,
 			page,
 			onProgress: v => nprogress.set(v / 2),
@@ -56,7 +58,7 @@ export default function SearchResultsPage({ active, name, broad, onSelect }: Sea
 		let data: SearchResultsTyped<T>;
 
 		if (!useOfp) {
-			data = await FloAPI.searchByName<T>(name, {
+			data = await searchByName<T>(name, {
 				limit: PAGE_SIZE,
 				page,
 				onProgress: v => nprogress.set(v / 2 + 50),
@@ -69,7 +71,7 @@ export default function SearchResultsPage({ active, name, broad, onSelect }: Sea
 			new Promise<void>(async resolve => {
 				console.log("Loading extra data...", loadingExtra, data.data);
 				for (const result of data.data ?? []) {
-					const extra = await FloAPI.fetchFromNode(result.node.id);
+					const extra = await fetchFromNode(result.node.id);
 					extraData.set(result.node.id, extra);
 				}
 				resolve();
@@ -93,38 +95,44 @@ export default function SearchResultsPage({ active, name, broad, onSelect }: Sea
 	};
 
 	const switchPage = (page: number) => {
-		if (search) searchFor(search, page, broadSearch).then(data => {
-			if (broadSearch) setBroadResults(data as SearchResultsTyped<true>);
+		if (name) searchFor(name, page, broad).then(data => {
+			if (broad) setBroadResults(data as SearchResultsTyped<true>);
 			else setNarrowResults(data as SearchResultsTyped<false>);
 		}).catch(console.error);
 	};
 
 	const broadResultsClick = (result: SearchResultPersonUseOfp) => {
-		void FloAPI.fetchFromNode(result.node.id).then(data => {
-			void navigate(`/athletes/${data.data.arena_person_identity_id}`);
+		void fetchFromNode(result.node.id).then(data => {
+			console.log(data.data.original_entity);
+			onSelect(data.data.arena_person_identity_id, data.data.original_entity.name);
 		});
 	};
 
 	return (
 		<Stack>
-			<Title order={1}>{broadSearch ? "Broad" : "Narrow"} {loading ? "Search...": "Results"}</Title>
+			<Title order={1}>{broad ? "Broad" : "Narrow"} {loading ? "Search...": "Results"}</Title>
 			{loading ? (
 				[...Array<string>(PAGE_SIZE)].map((_, i) => (
 					<Skeleton key={i} style={{ marginBottom: "1rem" }} />
 				))
-			) : ((narrowResults && narrowResults.data && !broadSearch) ? (
+			) : ((narrowResults && narrowResults.data && !broad) ? (
 				<Stack align="stretch" gap="xl" mb="xl">
 					<Stack>
 						{narrowResults.data.map((result) => (
-							<Card key={result.id} styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }} p="lg" className={styles.result} mx="xs">
-								<Link to={`/athletes/${result.arena_person_identity_id}`} style={{ textDecoration: "none" }} className={styles.resultLink}>
-									<Title order={3}>{result.name}</Title><Text size="xs" c="dimmed">ID: {result.arena_person_identity_id}</Text>
-									{result.location ?
-										<Text><Text span fw={600}>Location:</Text> {result.location.name} ({[result.location.city, result.location.state].filter(v => v).join(", ")})</Text>
-										: <Text c="dimmed">No location data</Text>}
-									<Text><Text span fw={600}>HS Graduation:</Text> {result.high_school_grad_year}</Text>
-									{result.birth_date ? <Text><Text span fw={600}>Birthday:</Text> {dayjs(result.birth_date).format("MMMM D, YYYY")}</Text> : <Text c="dimmed">Birth date unavailable</Text>}
-								</Link>
+							<Card
+								key={result.id}
+								styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }}
+								p="lg"
+								className={styles.result}
+								mx="xs"
+								onClick={() => onSelect(result.arena_person_identity_id, result.name)}
+							>
+								<Title order={3}>{result.name}</Title><Text size="xs" c="dimmed">ID: {result.arena_person_identity_id}</Text>
+								{result.location ?
+									<Text><Text span fw={600}>Location:</Text> {result.location.name} ({[result.location.city, result.location.state].filter(v => v).join(", ")})</Text>
+									: <Text c="dimmed">No location data</Text>}
+								<Text><Text span fw={600}>HS Graduation:</Text> {result.high_school_grad_year}</Text>
+								{result.birth_date ? <Text><Text span fw={600}>Birthday:</Text> {dayjs(result.birth_date).format("MMMM D, YYYY")}</Text> : <Text c="dimmed">Birth date unavailable</Text>}
 							</Card>
 						))}
 					</Stack>
@@ -134,19 +142,19 @@ export default function SearchResultsPage({ active, name, broad, onSelect }: Sea
 						className={styles.resultsPagination}
 					/>
 				</Stack>
-			) : (broadResults && broadResults.data && broadSearch) ? (
+			) : (broadResults && broadResults.data && broad) ? (
 				<Stack align="stretch" gap="xl" mb="xl">
 					<Stack>
-						{extraData.size ? Array.from(extraData.values()).map((extra) => (
-							<Card key={extra.data.original_entity.id} styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }} p="lg" className={styles.result} mx="xs">
-								<Link to={`/athletes/${extra.data.original_entity.arena_person_identity_id}`} style={{ textDecoration: "none" }} className={styles.resultLink}>
-									<Title order={3}>{extra.data.original_entity.name}</Title><Text size="xs" c="dimmed">ID: {extra.data.original_entity.arena_person_identity_id}</Text>
-									{extra.data.original_entity.location ?
-										<Text><Text span fw={600}>Location:</Text> {extra.data.original_entity.location.name} ({[extra.data.original_entity.location.city, extra.data.original_entity.location.state].filter(v => v).join(", ")})</Text>
+						{extraData.size ? Array.from(extraData.values()).map(extra => extra.data.original_entity).map(entity => (
+							<Card key={entity.id} styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }} p="lg" className={styles.result} mx="xs">
+								<Button onClick={() => onSelect(entity.arena_person_identity_id, entity.name)} style={{ textDecoration: "none" }} className={styles.resultLink}>
+									<Title order={3}>{entity.name}</Title><Text size="xs" c="dimmed">ID: {entity.arena_person_identity_id}</Text>
+									{entity.location ?
+										<Text><Text span fw={600}>Location:</Text> {entity.location.name} ({[entity.location.city, entity.location.state].filter(v => v).join(", ")})</Text>
 										: <Text c="dimmed">No location data</Text>}
-									<Text><Text span fw={600}>HS Graduation:</Text> {extra.data.original_entity.high_school_grad_year}</Text>
-									{extra.data.original_entity.birth_date ? <Text><Text span fw={600}>Birthday:</Text> {dayjs(extra.data.original_entity.birth_date).format("MMMM D, YYYY")}</Text> : <Text c="dimmed">Birth date unavailable</Text>}
-								</Link>
+									<Text><Text span fw={600}>HS Graduation:</Text> {entity.high_school_grad_year}</Text>
+									{entity.birth_date ? <Text><Text span fw={600}>Birthday:</Text> {dayjs(entity.birth_date).format("MMMM D, YYYY")}</Text> : <Text c="dimmed">Birth date unavailable</Text>}
+								</Button>
 							</Card>
 						)) : broadResults.data.map((result) => (
 							<Card key={result.id} styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }} p="lg" className={styles.result} mx="xs" onClick={() => !extraData.get(result.node.id) ? broadResultsClick(result) : null}>
