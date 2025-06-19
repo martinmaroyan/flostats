@@ -42,7 +42,7 @@ const theme = createTheme({
 
 ReactDOM.createRoot(root!).render(
 	<React.StrictMode>
-		<MantineProvider defaultColorScheme="dark" theme={theme}>
+		<MantineProvider defaultColorScheme="light" theme={theme}>
 			<NavigationProgress />
 			<BrowserRouter>
 				<SearchBar loading={false} />
