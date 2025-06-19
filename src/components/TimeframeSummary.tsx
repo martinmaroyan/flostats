@@ -8,7 +8,7 @@ export default function TimeframeSummary(props: AthleteDataProps & { title: stri
 	return (
 		<Stack align="center" w="100%">
 			<Title order={2}>{props.title}</Title>
-			<Analysis mx="lg" {...props}>
+			<Analysis {...props}>
 				<Tabs defaultValue="matches" w="100%">
 					<Tabs.List justify="center">
 						<Tabs.Tab value="matches">Matches</Tabs.Tab>
