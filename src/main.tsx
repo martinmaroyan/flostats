@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import Athletes from "./Athletes.tsx";
 import { BrowserRouter, Route, Routes } from "react-router";
-import { createTheme, MantineProvider } from "@mantine/core";
+import { createTheme, CSSVariablesResolver, lighten, MantineProvider } from "@mantine/core";
 import { NavigationProgress } from "@mantine/nprogress";
 
 import SearchBar from "./components/SearchBar.tsx";
@@ -16,12 +16,13 @@ import "@mantine/carousel/styles.css";
 import "mantine-react-table/styles.css";
 
 import SearchResultsPage from "./components/SearchResults.tsx";
+import ThemeToggle from "./components/ThemeToggle.tsx";
 
 export const ID_REGEX = new RegExp("[0-9(a-f|A-F)]{8}-[0-9(a-f|A-F)]{4}-4[0-9(a-f|A-F)]{3}-[89ab][0-9(a-f|A-F)]{3}-[0-9(a-f|A-F)]{12}"); // UUID v4
 
 const root = document.getElementById("root");
 
-const theme = createTheme({
+const themeOverride = createTheme({
 	primaryColor: "blue",
 	colors: {
 		blue: [
@@ -39,19 +40,27 @@ const theme = createTheme({
 	}
 });
 
+const resolver: CSSVariablesResolver = theme => ({
+	variables: {
+		"--mantine-win-color": theme.colors.green[7],
+		"--mantine-loss-color": theme.colors.red[1],
+	},
+	light: {},
+	dark: {},
+});
 
 ReactDOM.createRoot(root!).render(
 	<React.StrictMode>
-		<MantineProvider defaultColorScheme="light" theme={theme}>
+		<MantineProvider defaultColorScheme="dark" theme={themeOverride} cssVariablesResolver={resolver}>
 			<NavigationProgress />
 			<BrowserRouter>
 				<SearchBar loading={false} />
-				{/*<ThemeToggle styles={{ root: {
+				<ThemeToggle styles={{ root: {
 					position: "absolute",
 					top: 0,
 					right: 0,
 					margin: "2rem",
-				} }} size="lg" />*/}
+				} }} size="lg" />
 				<Routes>
 					<Route path="/" element={<></>} />
 					<Route path="/search" element={<SearchResultsPage />} />
