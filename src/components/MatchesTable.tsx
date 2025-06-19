@@ -42,7 +42,7 @@ export default function MatchesTable({ bouts, identityPersonId }: AthleteDataPro
 			header: "W/L",
 			accessorFn: row => row.isAWin ? "W" : "L",
 			id: "winLoss",
-			Cell: ({ cell }) => <Text ta="center" size="sm" c={cell.getValue<string>() == "W" ? "green" : "red"}>{cell.getValue<string>()}</Text>,
+			Cell: ({ cell }) => <Text ta="center" size="sm" c={cell.getValue<string>() == "W" ? "var(--mantine-win-color)" : "red"}>{cell.getValue<string>()}</Text>,
 			size: 50,
 			enableSorting: false,
 			Header: () => <Text ta="center" size="sm">W/L</Text>,

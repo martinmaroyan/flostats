@@ -103,7 +103,7 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 	}, [wrestlers, bouts, identityPersonId]);
 
 	return stats ? (
-		<Card p="0" bg="var(--mantine-color-dark-7)" bd="1px solid var(--mantine-color-gray-7)" w="100%" mx="lg">
+		<Card p="0" bg="var(--mantine-color-body)" bd="1px solid var(--mantine-color-gray-7)" w="100%" mx="lg">
 			<Flex gap="lg" py="lg" justify="center" direction="row" wrap="wrap">
 				<Group gap={4}>
 					<Text fw={600}>Matches:</Text>
@@ -111,11 +111,11 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 				</Group>
 				<Group gap={4}>
 					<Text fw={600}>Wins:</Text>
-					<Text c="green">{stats.wins}</Text>
+					<Text c="var(--mantine-win-color)">{stats.wins}</Text>
 				</Group>
 				<Group gap={4}>
 					<Text fw={600}>Losses:</Text>
-					<Text c="red">{stats.losses}</Text>
+					<Text c="--mantine-loss-color">{stats.losses}</Text>
 				</Group>
 				<Group gap={4}>
 					<Text fw={600}>Pins:</Text>
@@ -127,22 +127,22 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 				</Group>
 				<Group gap={4}>
 					<Text fw={600}>W/L Ratio:</Text>
-					<Text c="green">{stats.wlRatio[0]}</Text>
+					<Text c="var(--mantine-win-color)">{stats.wlRatio[0]}</Text>
 					<Text>-</Text>
-					<Text c="red">{stats.wlRatio[1]}</Text>
-					<Text c={stats.wlRatio[1] != 0 ? (stats.wlRatio[0] / stats.wlRatio[1] > 1 ? "green" : "red") : "green"}>({(stats.wlRatio[1] != 0 ? (stats.wlRatio[0] / stats.wlRatio[1]) : stats.wlRatio[0]).toFixed(2)})</Text>
+					<Text c="--mantine-loss-color">{stats.wlRatio[1]}</Text>
+					<Text c={stats.wlRatio[1] != 0 ? (stats.wlRatio[0] / stats.wlRatio[1] > 1 ? "var(--mantine-win-color)" : "--mantine-loss-color") : "var(--mantine-win-color)"}>({(stats.wlRatio[1] != 0 ? (stats.wlRatio[0] / stats.wlRatio[1]) : stats.wlRatio[0]).toFixed(2)})</Text>
 				</Group>
 				<Group gap={4}>
 					<Text fw={600}>Win Percentage:</Text>
-					<Text c={stats.winPercentage > 0.5 ? "green" : "red"}>{(stats.winPercentage * 100).toFixed(1)}%</Text>
+					<Text c={stats.winPercentage > 0.5 ? "var(--mantine-win-color)" : "--mantine-loss-color"}>{(stats.winPercentage * 100).toFixed(1)}%</Text>
 				</Group>
 				<Group gap={4}>
 					<Text fw={600}>Quickest Win:</Text>
-					<Text c={stats.quickestWin ? "green" : "red"}>{stats.quickestWin ? (stats.quickestWin.minutes + ":" + ((stats.quickestWin.seconds < 10 ? "0" : "") + stats.quickestWin.seconds)) : "N/A"} {stats.quickestWin ? stats.quickestWin.bout.attributes.winType : ""}</Text>
+					<Text c={stats.quickestWin ? "var(--mantine-win-color)" : "--mantine-loss-color"}>{stats.quickestWin ? (stats.quickestWin.minutes + ":" + ((stats.quickestWin.seconds < 10 ? "0" : "") + stats.quickestWin.seconds)) : "N/A"} {stats.quickestWin ? stats.quickestWin.bout.attributes.winType : ""}</Text>
 				</Group>
 				<Group gap={4}>
 					<Text fw={600}>Quickest Loss:</Text>
-					<Text c={stats.quickestLoss ? "red" : "green"}>{stats.quickestLoss ? (stats.quickestLoss.minutes + ":" + ((stats.quickestLoss.seconds < 10 ? "0" : "") + stats.quickestLoss.seconds)) : "N/A"} {stats.quickestLoss ? stats.quickestLoss.bout.attributes.winType : ""}</Text>
+					<Text c={stats.quickestLoss ? "--mantine-loss-color" : "var(--mantine-win-color)"}>{stats.quickestLoss ? (stats.quickestLoss.minutes + ":" + ((stats.quickestLoss.seconds < 10 ? "0" : "") + stats.quickestLoss.seconds)) : "N/A"} {stats.quickestLoss ? stats.quickestLoss.bout.attributes.winType : ""}</Text>
 				</Group>
 			</Flex>
 			<Accordion variant="default">
@@ -159,8 +159,8 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 							withPolarAngleAxis
 							withPolarRadiusAxis
 							series={[
-								{ name: "wins", color: "green", opacity: 0.2 },
-								{ name: "losses", color: "red", opacity: 0.2 },
+								{ name: "wins", color: "var(--mantine-win-color)", opacity: 0.2 },
+								{ name: "losses", color: "--mantine-loss-color", opacity: 0.2 },
 							]}
 							polarRadiusAxisProps={{
 								scale: "sqrt",
