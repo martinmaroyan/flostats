@@ -2,10 +2,11 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import Athletes from "./Athletes.tsx";
 import { BrowserRouter, Route, Routes } from "react-router";
-import { createTheme, CSSVariablesResolver, lighten, MantineProvider } from "@mantine/core";
+import { createTheme, CSSVariablesResolver, MantineProvider } from "@mantine/core";
 import { NavigationProgress } from "@mantine/nprogress";
 
 import SearchBar from "./components/SearchBar.tsx";
+import InfoButton from "./components/InfoButton.tsx";
 
 import "./index.css";
 import "@mantine/core/styles.css";
@@ -55,6 +56,7 @@ ReactDOM.createRoot(root!).render(
 			<NavigationProgress />
 			<BrowserRouter>
 				<SearchBar loading={false} />
+				<InfoButton />
 				<ThemeToggle styles={{ root: {
 					position: "absolute",
 					top: 0,
