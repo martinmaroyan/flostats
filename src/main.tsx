@@ -18,6 +18,7 @@ import "mantine-react-table/styles.css";
 
 import SearchResultsPage from "./components/SearchResults.tsx";
 import ThemeToggle from "./components/ThemeToggle.tsx";
+import CompareAthletes from "./components/compare/CompareAthletes.tsx";
 
 export const ID_REGEX = new RegExp("[0-9(a-f|A-F)]{8}-[0-9(a-f|A-F)]{4}-4[0-9(a-f|A-F)]{3}-[89ab][0-9(a-f|A-F)]{3}-[0-9(a-f|A-F)]{12}"); // UUID v4
 
@@ -68,6 +69,7 @@ ReactDOM.createRoot(root!).render(
 					<Route path="/search" element={<SearchResultsPage />} />
 					<Route path="/athletes/:id" element={<Athletes />} />
 					<Route path="/teams/:id" element={<Athletes />} />
+					<Route path="/compare" element={<CompareAthletes />} />
 				</Routes>
 			</BrowserRouter>
 		</MantineProvider>
