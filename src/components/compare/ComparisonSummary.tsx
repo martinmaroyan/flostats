@@ -28,7 +28,7 @@ export default function ComparisonSummary({ summary, athlete1Name, athlete2Name 
 				</Flex>
 
 				{/* Side-by-Side Comparison */}
-				<Group align="start" grow>
+				<Group align="center" grow justify="center">
 					{/* Athlete 1 Stats */}
 					<Card p="md" withBorder>
 						<Stack gap="sm" align="center">

@@ -237,6 +237,8 @@ export default function CompareAthletes() {
 							commonOpponents={commonOpponents}
 							athlete1Bouts={athlete1Bouts}
 							athlete2Bouts={athlete2Bouts}
+							athlete1Name={athlete1Info.name || "Wrestler 1"}
+							athlete2Name={athlete2Info.name || "Wrestler 2"}
 						/>
 					)}
 				</Card>
