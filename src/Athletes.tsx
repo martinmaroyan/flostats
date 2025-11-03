@@ -72,7 +72,7 @@ export default function Athletes() {
 		return bouts ? {
 			data: bouts.data.filter(bout => {
 				const date = dayjs(bout.attributes.goDateTime ?? bout.attributes.endDateTime ?? FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", bouts)?.attributes.startDateTime);
-				if (startDate && date.isBefore(dayjs(startDate))) return false;
+				if (startDate && date.isBefore(dayjs(startDate))) {console.log("filtering"); return false};
 				if (endDate && date.isAfter(dayjs(endDate))) return false;
 				if (bout.attributes.winType == "NC") return false;
 				if (bout.attributes.winType == "BYE" && !filter.byes) return false;
