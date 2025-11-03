@@ -100,7 +100,7 @@ export default function HeadToHeadDisplay({ h2hMatches, athlete1Bouts, athlete1N
 
 							return (
 								<Card key={idx} p="md" withBorder bg="var(--mantine-color-dark-8)">
-									<Group justify="space-between" wrap="nowrap">
+									<Group justify="start" wrap="nowrap">
 										<Group gap="md" wrap="nowrap">
 											<Badge
 												size="lg"

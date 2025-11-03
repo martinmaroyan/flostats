@@ -16,9 +16,11 @@ type Props = {
 	commonOpponents: CommonOpponentData[];
 	athlete1Bouts: BoutsResponse<any, any>;
 	athlete2Bouts: BoutsResponse<any, any>;
+	athlete1Name: string;
+	athlete2Name: string;
 };
 
-export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, athlete2Bouts }: Props) {
+export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, athlete2Bouts, athlete1Name, athlete2Name }: Props) {
 	const [expanded, setExpanded] = React.useState<MRT_ExpandedState>({});
 
 	const columns = useMemo<MRT_ColumnDef<CommonOpponentData>[]>(() => [
@@ -32,7 +34,7 @@ export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, a
 			),
 		},
 		{
-			header: "Wrestler 1 Record",
+			header: `${athlete1Name} record`,
 			accessorFn: row => `${row.athlete1Wins}-${row.athlete1Losses}`,
 			id: "athlete1Record",
 			Cell: ({ row }) => {
@@ -60,7 +62,7 @@ export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, a
 			},
 		},
 		{
-			header: "Wrestler 2 Record",
+			header: `${athlete2Name} record`,
 			accessorFn: row => `${row.athlete2Wins}-${row.athlete2Losses}`,
 			id: "athlete2Record",
 			Cell: ({ row }) => {
@@ -100,14 +102,14 @@ export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, a
 				const athlete1WinPct = row.athlete1Wins / (row.athlete1Wins + row.athlete1Losses);
 				const athlete2WinPct = row.athlete2Wins / (row.athlete2Wins + row.athlete2Losses);
 
-				if (athlete1WinPct > athlete2WinPct) return "Wrestler 1";
-				if (athlete2WinPct > athlete1WinPct) return "Wrestler 2";
+				if (athlete1WinPct > athlete2WinPct) return athlete1Name;
+				if (athlete2WinPct > athlete1WinPct) return athlete2Name;
 				return "Tied";
 			},
 			id: "advantage",
 			Cell: ({ cell }) => {
 				const value = cell.getValue<string>();
-				const color = value === "Wrestler 1" ? "green" : value === "Wrestler 2" ? "blue" : "gray";
+				const color = value === athlete1Name ? "green" : value === athlete2Name ? "blue" : "gray";
 				return (
 					<Badge color={color} variant="light">
 						{value}
@@ -115,7 +117,7 @@ export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, a
 				);
 			},
 		},
-	], []);
+	], [athlete1Name, athlete2Name]);
 
 	const table = useMantineReactTable({
 		columns,
@@ -143,7 +145,7 @@ export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, a
 					<Group align="start" grow>
 						{/* Wrestler 1 Matches */}
 						<Stack gap="xs">
-							<Text fw={600} c="dimmed">Wrestler 1 vs {opponent.opponentName}</Text>
+							<Text fw={600} c="dimmed">{athlete1Name} vs {opponent.opponentName}</Text>
 							{opponent.athlete1Bouts.map((boutData, idx) => {
 								const bout = boutData.bout;
 								const event = FloAPI.findIncludedObjectById<EventObject>(
@@ -188,7 +190,7 @@ export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, a
 
 						{/* Wrestler 2 Matches */}
 						<Stack gap="xs">
-							<Text fw={600} c="dimmed">Wrestler 2 vs {opponent.opponentName}</Text>
+							<Text fw={600} c="dimmed">{athlete2Name} vs {opponent.opponentName}</Text>
 							{opponent.athlete2Bouts.map((boutData, idx) => {
 								const bout = boutData.bout;
 								const event = FloAPI.findIncludedObjectById<EventObject>(
