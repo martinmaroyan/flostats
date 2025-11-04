@@ -1,7 +1,7 @@
-import { Button, Group, TextInput } from "@mantine/core";
+import { Anchor, Button, Group, TextInput } from "@mantine/core";
 import React from "react";
 import { ID_REGEX } from "../main";
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 
 type Props = {
 	loading: boolean;
@@ -51,7 +51,7 @@ export default function SearchBar({ loading }: Props) {
 	};
 
 	return (
-		<Group justify="center" mb="xl">
+		<Group justify="center" mb="xl" mt={{ base: "xl", sm: 0 }}>
 			<TextInput
 				value={inputValue}
 				name="wrestler-search"
@@ -64,26 +64,35 @@ export default function SearchBar({ loading }: Props) {
 				spellCheck={false}
 				autoComplete="true"
 			/>
-			<Group>
-				<Button
-					variant="outline"
-					loading={loading}
-					onClick={() => {
-						searchFor(inputValue, false);
-					}}
-					ref={searchButtonRef}
+			<Group justify="center">
+				<Group>
+					<Button
+						variant="outline"
+						loading={loading}
+						onClick={() => {
+							searchFor(inputValue, false);
+						}}
+						ref={searchButtonRef}
+					>
+						Narrow Search
+					</Button>
+					<Button
+						variant="outline"
+						loading={loading}
+						onClick={() => {
+							searchFor(inputValue, true);
+						}}
+					>
+						Broad Search
+					</Button>
+				</Group>
+				<Anchor
+					component={Link}
+					to="/compare"
+					size="md"
 				>
-					Narrow Search
-				</Button>
-				<Button
-					variant="outline"
-					loading={loading}
-					onClick={() => {
-						searchFor(inputValue, true);
-					}}
-				>
-					Broad Search
-				</Button>
+					Compare Wrestlers
+				</Anchor>
 			</Group>
 		</Group>
 	);

@@ -45,6 +45,43 @@ export default class FloAPI {
 		return this.fetchWithProgressTyped<BoutObject, R, I>(`https://floarena-api.flowrestling.org/bouts/?identityPersonId=${athleteId}&page[size]=${config.pageSize}&page[offset]=${config.pageOffset}&hasResult=true` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? ""), config.onProgress);
 	}
 
+	public static async fetchAllBouts<R extends RelationshipToBout | void, I extends Exclude<FloObject, BoutObject> | void>(athleteId: UUID, onProgress?: (progress: number) => void, include: readonly BoutsIncludeString[] = ["bottomWrestler.team", "topWrestler.team", "weightClass", "topWrestler.division", "bottomWrestler.division", "event","roundName"], extra?: string): Promise<BoutsResponse<R, I>> {
+		// Fetch the first 40 items
+		let totalData = await this.fetchBouts<R, I>(athleteId, { pageSize: 40, pageOffset: 0 }, include, extra);
+
+		// Get the total count from meta
+		const totalCount = totalData.meta?.total ?? totalData.data.length;
+
+		// Report initial progress
+		if (onProgress) {
+			onProgress((totalData.data.length / totalCount) * 100);
+		}
+
+		let currentLink = `https://floarena-api.flowrestling.org/bouts/?identityPersonId=${athleteId}&page[size]=40&page[offset]=0&hasResult=true` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? "");
+
+		// Keep fetching while there's a next link that's different from the current link
+		while (totalData.links.next && totalData.links.next !== currentLink) {
+			const nextData = await this.fetchWithProgressTyped<BoutObject, R, I>(totalData.links.next);
+
+			// Append the data to totalData
+			totalData.data = [...totalData.data, ...nextData.data];
+			if (nextData.included) {
+				totalData.included = [...totalData.included, ...nextData.included];
+			}
+
+			// Report progress based on cumulative data length
+			if (onProgress) {
+				onProgress((totalData.data.length / totalCount) * 100);
+			}
+
+			// Update the current link for next iteration
+			currentLink = totalData.links.next;
+			totalData.links.next = nextData.links.next;
+		}
+
+		return totalData;
+	}
+
 	public static fetchWrestlersByWeightClass<R extends RelationshipToWrestler | void, I extends Exclude<FloObject, WrestlerObject> | void>(weightClassId: UUID, config: FetchConfig, include: readonly string[] = [], extra?: string): Promise<WrestlersResponse<R, I>> {
 		return this.fetchWithProgressTyped<WrestlerObject, R, I>(`https://floarena-api.flowrestling.org/wrestlers/?weightClassId=${weightClassId}&page[size]=${config.pageSize}&page[offset]=${config.pageOffset}` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? ""),);
 	}

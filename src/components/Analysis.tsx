@@ -1,7 +1,7 @@
 import React from "react";
 import { Accordion, Card, CardProps, Flex, Group, Text, Title } from "@mantine/core";
 import { AthleteDataProps } from "../Athletes";
-import { RadarChart } from "@mantine/charts";
+import { RadarChart, BarChart } from "@mantine/charts";
 import { BoutAttributes } from "../api/types/objects/bout";
 import { AllBoutRelationships } from "../api/types/relationships";
 import { ObjectIdentifier } from "../api/types/types";
@@ -29,6 +29,7 @@ type Stats = {
 	quickestWin?: { minutes: number, seconds: number, bout: Bout };
 	quickestLoss?: { minutes: number, seconds: number, bout: Bout };
 	finishTypes: { type: string, wins: number, losses: number }[];
+	timeSeriesData: { period: string, matches: number, wins: number, losses: number, winRate: number }[];
 }
 
 function reduce(frac: Ratio): Ratio {
@@ -54,6 +55,7 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 				wlRatio: [0, 0],
 				winPercentage: 0,
 				finishTypes: [],
+				timeSeriesData: [],
 			};
 
 			bouts.data.forEach(bout => {
@@ -98,6 +100,49 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 			stats.wlRatio = reduce([stats.wins, stats.losses]);
 			stats.winPercentage = stats.wins / stats.matches;
 
+			// Process time-series data
+			const boutsWithDates = bouts.data
+				.map(bout => ({
+					bout,
+					date: bout.attributes.goDateTime ? new Date(bout.attributes.goDateTime) : null,
+					isWin: FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.winnerWrestlerId, "wrestler", bouts)?.attributes.identityPersonId == identityPersonId
+				}))
+				.filter(b => b.date !== null)
+				.sort((a, b) => a.date!.getTime() - b.date!.getTime());
+
+			// Group by month
+			const monthlyData = new Map<string, { wins: number, losses: number, matches: number }>();
+
+			boutsWithDates.forEach(({ date, isWin }) => {
+				const monthKey = `${date!.getFullYear()}-${String(date!.getMonth() + 1).padStart(2, '0')}`;
+
+				if (!monthlyData.has(monthKey)) {
+					monthlyData.set(monthKey, { wins: 0, losses: 0, matches: 0 });
+				}
+
+				const monthStats = monthlyData.get(monthKey)!;
+				monthStats.matches++;
+				if (isWin) {
+					monthStats.wins++;
+				} else {
+					monthStats.losses++;
+				}
+			});
+
+			// Convert to array format for chart
+			stats.timeSeriesData = Array.from(monthlyData.entries())
+				.map(([period, data]) => {
+					const [year, month] = period.split('-');
+					const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+					return {
+						period: `${monthNames[parseInt(month) - 1]} ${year}`,
+						matches: data.matches,
+						wins: data.wins,
+						losses: data.losses,
+						winRate: data.matches > 0 ? (data.wins / data.matches) * 100 : 0
+					};
+				});
+
 			return stats;
 		}
 	}, [wrestlers, bouts, identityPersonId]);
@@ -115,7 +160,7 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 				</Group>
 				<Group gap={4}>
 					<Text fw={600}>Losses:</Text>
-					<Text c="--mantine-loss-color">{stats.losses}</Text>
+					<Text c="var(--mantine-loss-color)">{stats.losses}</Text>
 				</Group>
 				<Group gap={4}>
 					<Text fw={600}>Pins:</Text>
@@ -129,20 +174,20 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 					<Text fw={600}>W/L Ratio:</Text>
 					<Text c="var(--mantine-win-color)">{stats.wlRatio[0]}</Text>
 					<Text>-</Text>
-					<Text c="--mantine-loss-color">{stats.wlRatio[1]}</Text>
-					<Text c={stats.wlRatio[1] != 0 ? (stats.wlRatio[0] / stats.wlRatio[1] > 1 ? "var(--mantine-win-color)" : "--mantine-loss-color") : "var(--mantine-win-color)"}>({(stats.wlRatio[1] != 0 ? (stats.wlRatio[0] / stats.wlRatio[1]) : stats.wlRatio[0]).toFixed(2)})</Text>
+					<Text c="var(--mantine-loss-color)">{stats.wlRatio[1]}</Text>
+					<Text c={stats.wlRatio[1] != 0 ? (stats.wlRatio[0] / stats.wlRatio[1] > 1 ? "var(--mantine-win-color)" : "var(--mantine-loss-color)") : "var(--mantine-win-color)"}>({(stats.wlRatio[1] != 0 ? (stats.wlRatio[0] / stats.wlRatio[1]) : stats.wlRatio[0]).toFixed(2)})</Text>
 				</Group>
 				<Group gap={4}>
 					<Text fw={600}>Win Percentage:</Text>
-					<Text c={stats.winPercentage > 0.5 ? "var(--mantine-win-color)" : "--mantine-loss-color"}>{(stats.winPercentage * 100).toFixed(1)}%</Text>
+					<Text c={stats.winPercentage > 0.5 ? "var(--mantine-win-color)" : "var(--mantine-loss-color)"}>{(stats.winPercentage * 100).toFixed(1)}%</Text>
 				</Group>
 				<Group gap={4}>
-					<Text fw={600}>Quickest Win:</Text>
-					<Text c={stats.quickestWin ? "var(--mantine-win-color)" : "--mantine-loss-color"}>{stats.quickestWin ? (stats.quickestWin.minutes + ":" + ((stats.quickestWin.seconds < 10 ? "0" : "") + stats.quickestWin.seconds)) : "N/A"} {stats.quickestWin ? stats.quickestWin.bout.attributes.winType : ""}</Text>
+					<Text fw={600}>Fastest Win:</Text>
+					<Text c={stats.quickestWin ? "var(--mantine-win-color)" : "var(--mantine-loss-color)"}>{stats.quickestWin ? (stats.quickestWin.minutes + ":" + ((stats.quickestWin.seconds < 10 ? "0" : "") + stats.quickestWin.seconds)) : "N/A"} {stats.quickestWin ? stats.quickestWin.bout.attributes.winType : ""}</Text>
 				</Group>
 				<Group gap={4}>
-					<Text fw={600}>Quickest Loss:</Text>
-					<Text c={stats.quickestLoss ? "--mantine-loss-color" : "var(--mantine-win-color)"}>{stats.quickestLoss ? (stats.quickestLoss.minutes + ":" + ((stats.quickestLoss.seconds < 10 ? "0" : "") + stats.quickestLoss.seconds)) : "N/A"} {stats.quickestLoss ? stats.quickestLoss.bout.attributes.winType : ""}</Text>
+					<Text fw={600}>Fastest Loss:</Text>
+					<Text c={stats.quickestLoss ? "var(--mantine-loss-color)" : "var(--mantine-win-color)"}>{stats.quickestLoss ? (stats.quickestLoss.minutes + ":" + ((stats.quickestLoss.seconds < 10 ? "0" : "") + stats.quickestLoss.seconds)) : "N/A"} {stats.quickestLoss ? stats.quickestLoss.bout.attributes.winType : ""}</Text>
 				</Group>
 			</Flex>
 			<Accordion variant="default">
@@ -150,22 +195,39 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 					<Accordion.Control ta="center">
 						<Title order={3}>See More</Title>
 					</Accordion.Control>
-					<Accordion.Panel>
-						<RadarChart
-							h={300}
-							w={300}
-							data={stats.finishTypes}
-							dataKey="type"
-							withPolarAngleAxis
-							withPolarRadiusAxis
-							series={[
-								{ name: "wins", color: "var(--mantine-win-color)", opacity: 0.2 },
-								{ name: "losses", color: "--mantine-loss-color", opacity: 0.2 },
-							]}
-							polarRadiusAxisProps={{
-								scale: "sqrt",
-							}}
-						/>
+					<Accordion.Panel styles={{ content: { alignItems: "center", flexDirection: "column" } }}>
+						<Flex gap="lg" justify="center" direction="row" wrap="wrap">
+							<RadarChart
+								h={300}
+								w={300}
+								data={stats.finishTypes}
+								dataKey="type"
+								withPolarAngleAxis
+								withPolarRadiusAxis
+								series={[
+									{ name: "wins", color: "var(--mantine-win-color)", opacity: 0.2 },
+									{ name: "losses", color: "var(--mantine-loss-color)", opacity: 0.2 },
+								]}
+								polarRadiusAxisProps={{
+									scale: "sqrt",
+								}}
+							/>
+							{stats.timeSeriesData.length > 0 && (
+								<BarChart
+									h={300}
+									w={300}
+									data={stats.timeSeriesData}
+									dataKey="period"
+									withLegend
+									type="stacked"
+									series={[
+										{ name: "wins", color: "var(--mantine-win-color)", label: "Wins" },
+										{ name: "losses", color: "var(--mantine-loss-color)", label: "Losses" },
+									]}
+									yAxisProps={{ domain: [0, 'auto'] }}
+								/>
+							)}
+						</Flex>
 						{children}
 					</Accordion.Panel>
 				</Accordion.Item>
