@@ -7,6 +7,7 @@ import { AllBoutRelationships } from "../api/types/relationships";
 import { ObjectIdentifier } from "../api/types/types";
 import FloAPI from "../api/FloAPI";
 import { WrestlerObject } from "../api/types/objects/wrestler";
+import { IconChevronRight } from "@tabler/icons-react";
 
 type Ratio = [number, number];
 
@@ -148,7 +149,7 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 	}, [wrestlers, bouts, identityPersonId]);
 
 	return stats ? (
-		<Card p="0" bg="var(--mantine-color-body)" bd="1px solid var(--mantine-color-gray-7)" w="100%" mx="lg">
+		<Card p="0" bg="var(--mantine-color-body)" bd="0px solid var(--mantine-color-gray-7)" w="100%" mx="lg">
 			<Flex gap="lg" py="lg" justify="center" direction="row" wrap="wrap">
 				<Group gap={4}>
 					<Text fw={600}>Matches:</Text>
@@ -190,7 +191,7 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 					<Text c={stats.quickestLoss ? "var(--mantine-loss-color)" : "var(--mantine-win-color)"}>{stats.quickestLoss ? (stats.quickestLoss.minutes + ":" + ((stats.quickestLoss.seconds < 10 ? "0" : "") + stats.quickestLoss.seconds)) : "N/A"} {stats.quickestLoss ? stats.quickestLoss.bout.attributes.winType : ""}</Text>
 				</Group>
 			</Flex>
-			<Accordion variant="default">
+			<Accordion variant="seperated" chevronSize="32">
 				<Accordion.Item value="Statistics" style={{ borderBottom: "none" }}>
 					<Accordion.Control ta="center">
 						<Title order={3}>See More</Title>

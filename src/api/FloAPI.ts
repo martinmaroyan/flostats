@@ -21,8 +21,19 @@ export default class FloAPI {
 		return new Promise((resolve, reject) => {
 			const xhr = new XMLHttpRequest();
 			xhr.open("GET", url, true);
+
+			// Track last reported progress to ensure monotonic updates
+			let lastProgress = 0;
+
 			xhr.addEventListener("progress", e => {
-				if (e.lengthComputable && onProgress) onProgress((e.loaded / e.total) * 100);
+				if (e.lengthComputable && onProgress) {
+					const progress = (e.loaded / e.total) * 100;
+					// Only report if progress increases (monotonic guarantee)
+					if (progress > lastProgress) {
+						lastProgress = progress;
+						onProgress(progress);
+					}
+				}
 			});
 			xhr.addEventListener("load", () => {
 				if (onProgress) onProgress(100);
@@ -46,6 +57,17 @@ export default class FloAPI {
 	}
 
 	public static async fetchAllBouts<R extends RelationshipToBout | void, I extends Exclude<FloObject, BoutObject> | void>(athleteId: UUID, onProgress?: (progress: number) => void, include: readonly BoutsIncludeString[] = ["bottomWrestler.team", "topWrestler.team", "weightClass", "topWrestler.division", "bottomWrestler.division", "event","roundName"], extra?: string): Promise<BoutsResponse<R, I>> {
+		// Track the highest progress reported to ensure monotonic progress
+		let lastReportedProgress = 0;
+
+		// Helper to report progress only if it increases
+		const reportProgress = (progress: number) => {
+			if (onProgress && progress > lastReportedProgress) {
+				lastReportedProgress = progress;
+				onProgress(progress);
+			}
+		};
+
 		// Fetch the first 40 items
 		let totalData = await this.fetchBouts<R, I>(athleteId, { pageSize: 40, pageOffset: 0 }, include, extra);
 
@@ -53,15 +75,27 @@ export default class FloAPI {
 		const totalCount = totalData.meta?.total ?? totalData.data.length;
 
 		// Report initial progress
-		if (onProgress) {
-			onProgress((totalData.data.length / totalCount) * 100);
-		}
+		reportProgress((totalData.data.length / totalCount) * 100);
 
 		let currentLink = `https://floarena-api.flowrestling.org/bouts/?identityPersonId=${athleteId}&page[size]=40&page[offset]=0&hasResult=true` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? "");
 
 		// Keep fetching while there's a next link that's different from the current link
 		while (totalData.links.next && totalData.links.next !== currentLink) {
-			const nextData = await this.fetchWithProgressTyped<BoutObject, R, I>(totalData.links.next);
+			// Calculate progress for this page
+			const currentItemCount = totalData.data.length;
+			const baseProgress = (currentItemCount / totalCount) * 100;
+			const pageSize = 40; // Assumed page size
+			const progressPerPage = (pageSize / totalCount) * 100;
+
+			// Fetch with progress tracking for individual page download
+			const nextData = await this.fetchWithProgressTyped<BoutObject, R, I>(
+				totalData.links.next,
+				(pageProgress) => {
+					// Combine base progress with current page's progress
+					const totalProgress = baseProgress + (pageProgress / 100) * progressPerPage;
+					reportProgress(Math.min(totalProgress, 100));
+				}
+			);
 
 			// Append the data to totalData
 			totalData.data = [...totalData.data, ...nextData.data];
@@ -69,10 +103,8 @@ export default class FloAPI {
 				totalData.included = [...totalData.included, ...nextData.included];
 			}
 
-			// Report progress based on cumulative data length
-			if (onProgress) {
-				onProgress((totalData.data.length / totalCount) * 100);
-			}
+			// Report progress based on cumulative data length after page completes
+			reportProgress((totalData.data.length / totalCount) * 100);
 
 			// Update the current link for next iteration
 			currentLink = totalData.links.next;

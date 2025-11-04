@@ -26,20 +26,20 @@ export default function GeneralInfoDisplay({ info, setIgnoredTeams, reset, setRe
 	const [ignored, setIgnored] = React.useState<Set<string>>(new Set());
 
 	React.useEffect(() => {
-		console.log("info");
+		//console.log("info");
 		setIgnored(new Set());
 	}, [info]);
 
 	React.useEffect(() => {
 		if (reset) {
-			console.log("setting ignored");
+			//console.log("setting ignored");
 			setIgnored(new Set());
 			setReset(false);
 		}
 	}, [reset]);
 
 	React.useEffect(() => {
-		console.log("ignored");
+		//console.log("ignored");
 		setIgnoredTeams(ignored);
 	}, [ignored]);
 
@@ -73,7 +73,7 @@ export default function GeneralInfoDisplay({ info, setIgnoredTeams, reset, setRe
 									} else {
 										ignored.add(team.attributes.identityTeamId);
 									}
-									console.log("setting ignored");
+									//console.log("setting ignored");
 									setIgnored(new Set(ignored));
 								}
 							}} opacity={team.attributes.identityTeamId && ignored.has(team.attributes.identityTeamId) ? 0.5 : 1}>
