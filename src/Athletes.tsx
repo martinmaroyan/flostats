@@ -326,9 +326,9 @@ export default function Athletes() {
 			</Stack>
 			{filteredBouts && filteredWrestlers && athleteId ? (
 				<Stack w="100%">
-					<TimeframeSummary title="Total Summary" bouts={filteredBouts} wrestlers={filteredWrestlers} identityPersonId={athleteId} />
+					<TimeframeSummary title="Total Summary" bouts={filteredBouts} wrestlers={filteredWrestlers} identityPersonId={athleteId} total />
 					{seasons.filter(season => season.bouts.meta.total > 0).map(season => (
-						<TimeframeSummary key={season.name} title={"Season: " + season.name} bouts={season.bouts} wrestlers={season.wrestlers} identityPersonId={athleteId} />
+						<TimeframeSummary key={season.name} title={"Season: " + season.name} bouts={season.bouts} wrestlers={season.wrestlers} identityPersonId={athleteId} total={false} />
 					))}
 				</Stack>
 			) : null}
