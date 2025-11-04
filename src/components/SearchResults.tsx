@@ -3,10 +3,11 @@ import React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import FloAPI, { SearchResultsTyped } from "../api/FloAPI";
 import { NodeResult, SearchResultPerson, SearchResultPersonUseOfp, SearchResults } from "../api/types/responses";
-import { Card, Pagination, Skeleton, Stack, Text, Title } from "@mantine/core";
+import { Button, Card, Pagination, Skeleton, Stack, Text, Title } from "@mantine/core";
 import dayjs from "dayjs";
 
 import styles from "./SearchResults.module.css";
+import { IconArrowLeft } from "@tabler/icons-react";
 
 const PAGE_SIZE = 10;
 
@@ -27,6 +28,23 @@ export default function SearchResultsPage() {
 
 	const navigate = useNavigate();
 
+	const getRedirectLink = (id: string) => {
+		const returnTo = searchParams.get("returnTo");
+		const selectFor = searchParams.get("selectFor");
+
+		const a1 = searchParams.get("athlete1");
+		const a2 = searchParams.get("athlete2");
+
+		if (returnTo && selectFor) {
+			const params = new URLSearchParams();
+			if (a1) params.set("athlete1", a1);
+			if (a2) params.set("athlete2", a2);
+			params.set(selectFor, id);
+			return `${returnTo}?${params.toString()}`;
+		} else {
+			return `/athletes/${id}`;
+		}
+	}
 
 	React.useEffect(() => {
 		if (broadSearch && broadResults) {
@@ -139,6 +157,9 @@ export default function SearchResultsPage() {
 
 	return (
 		<Stack>
+			<Button leftSection={<IconArrowLeft />} onClick={() => navigate(-1)} variant="subtle" size="md" style={{ alignSelf: "flex-start", margin: "1rem 0" }}>
+				Back
+			</Button>
 			<Title order={1}>{broadSearch ? "Broad" : "Narrow"} {loading ? "Search...": "Results"}</Title>
 			{loading ? (
 				[...Array<string>(PAGE_SIZE)].map((_, i) => (
@@ -149,7 +170,7 @@ export default function SearchResultsPage() {
 					<Stack>
 						{narrowResults.data.map((result) => (
 							<Card key={result.id} styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }} p="lg" className={styles.result} mx="xs">
-								<Link to={`/athletes/${result.arena_person_identity_id}`} style={{ textDecoration: "none" }} className={styles.resultLink}>
+								<Link to={getRedirectLink(result.arena_person_identity_id)} style={{ textDecoration: "none" }} className={styles.resultLink}>
 									<Title order={3}>{result.name}</Title><Text size="xs" c="dimmed">ID: {result.arena_person_identity_id}</Text>
 									{result.location ?
 										<Text><Text span fw={600}>Location:</Text> {result.location.name} ({[result.location.city, result.location.state].filter(v => v).join(", ")})</Text>
@@ -171,7 +192,7 @@ export default function SearchResultsPage() {
 					<Stack>
 						{extraData.size ? Array.from(extraData.values()).map((extra) => (
 							<Card key={extra.data.original_entity.id} styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }} p="lg" className={styles.result} mx="xs">
-								<Link to={`/athletes/${extra.data.original_entity.arena_person_identity_id}`} style={{ textDecoration: "none" }} className={styles.resultLink}>
+								<Link to={getRedirectLink(extra.data.original_entity.arena_person_identity_id)} style={{ textDecoration: "none" }} className={styles.resultLink}>
 									<Title order={3}>{extra.data.original_entity.name}</Title><Text size="xs" c="dimmed">ID: {extra.data.original_entity.arena_person_identity_id}</Text>
 									{extra.data.original_entity.location ?
 										<Text><Text span fw={600}>Location:</Text> {extra.data.original_entity.location.name} ({[extra.data.original_entity.location.city, extra.data.original_entity.location.state].filter(v => v).join(", ")})</Text>
