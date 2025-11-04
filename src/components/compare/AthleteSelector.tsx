@@ -1,15 +1,17 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { Button, Card, Group, Stack, Text, TextInput, Title } from "@mantine/core";
 import { ID_REGEX } from "../../main";
 
 export default function AthleteSelector() {
 	const navigate = useNavigate();
 
-	const [athlete1Query, setAthlete1Query] = useState("");
-	const [athlete2Query, setAthlete2Query] = useState("");
-	const [athlete1Id, setAthlete1Id] = useState<string | null>(null);
-	const [athlete2Id, setAthlete2Id] = useState<string | null>(null);
+	const [searchParams] = useSearchParams();
+
+	const [athlete1Query, setAthlete1Query] = useState<string>(searchParams.get("athlete1") || "");
+	const [athlete2Query, setAthlete2Query] = useState<string>(searchParams.get("athlete2") || "");
+	const [athlete1Id, setAthlete1Id] = useState<string | null>(searchParams.get("athlete1"));
+	const [athlete2Id, setAthlete2Id] = useState<string | null>(searchParams.get("athlete2"));
 
 	// Auto-detect if input is UUID or name
 	const handleAthlete1Input = (value: string) => {
@@ -39,7 +41,7 @@ export default function AthleteSelector() {
 		const test = ID_REGEX.exec(query);
 		if (!test) {
 			// Navigate to search with a flag indicating which athlete to select
-			navigate(`/search?q=${encodeURIComponent(query)}&page=1&ofp=false&selectFor=athlete${athleteNumber}&returnTo=/compare`);
+			navigate(`/search?q=${encodeURIComponent(query)}&page=1&ofp=false&selectFor=athlete${athleteNumber}&returnTo=/compare&athlete1=${athlete1Id || ""}&athlete2=${athlete2Id || ""}`);
 		}
 	};
 
