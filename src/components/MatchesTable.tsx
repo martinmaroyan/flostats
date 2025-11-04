@@ -140,13 +140,13 @@ export default function MatchesTable({ bouts, identityPersonId }: AthleteDataPro
 
 		const opponentTeam = FloAPI.findIncludedObjectById<TeamObject>(opponent?.attributes.teamId, "team", bouts);
 		const thisTeam = FloAPI.findIncludedObjectById<TeamObject>(thisWrestler?.attributes.teamId, "team", bouts);
-		if (!thisTeam) console.log("WTF no team found for wrestler", thisWrestler);
+		//if (!thisTeam) console.log("WTF no team found for wrestler", thisWrestler);
 
 		const weightClass = FloAPI.findIncludedObjectById<WeightClassObject>(bout.attributes.weightClassId, "weightClass", bouts);
 		const roundName = FloAPI.findIncludedObjectById<RoundNameObject>(bout.attributes.roundNameId, "roundName", bouts);
 		const event = FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", bouts);
 		const division = thisWrestler ? FloAPI.findIncludedObjectById<DivisionObject>(thisWrestler?.attributes.divisionId, "division", bouts) : undefined;
-		if (!division) console.log("WTF no division found for wrestler", thisWrestler);
+		//if (!division) console.log("WTF no division found for wrestler", thisWrestler);
 
 		return {
 			date,

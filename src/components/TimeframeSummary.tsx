@@ -1,12 +1,13 @@
-import { Stack, Tabs, Title } from "@mantine/core";
+import { Card, Stack, Tabs, Title } from "@mantine/core";
 import Analysis from "./Analysis";
 import MatchesTable from "./MatchesTable";
 import PlacementsDisplay from "./PlacementsDisplay";
 import { AthleteDataProps } from "../Athletes";
 
-export default function TimeframeSummary(props: AthleteDataProps & { title: string }) {
+export default function TimeframeSummary(props: AthleteDataProps & { title: string, total?: boolean }) {
 	return (
-		<Stack align="center" w="100%">
+		<Card style={{ border: props.total ? "" : "1px solid var(--mantine-color-gray-7)" }}>
+			<Stack align="center" w="100%">
 			<Title order={2}>{props.title}</Title>
 			<Analysis {...props}>
 				<Tabs defaultValue="matches" w="100%">
@@ -23,5 +24,6 @@ export default function TimeframeSummary(props: AthleteDataProps & { title: stri
 				</Tabs>
 			</Analysis>
 		</Stack>
+		</Card>
 	)
 }

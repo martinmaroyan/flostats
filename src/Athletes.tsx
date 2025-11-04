@@ -5,6 +5,7 @@ import { nprogress } from "@mantine/nprogress";
 
 import { BoutsResponse, WrestlersResponse } from "./api/types/responses";
 import FloAPI from "./api/FloAPI";
+import { ProgressCoordinator } from "./utils/ProgressCoordinator";
 import { EventObject } from "./api/types/objects/event";
 import { WrestlerObject } from "./api/types/objects/wrestler";
 import { BoutsIncludeAll, FloObject, WrestlersIncludeAll } from "./api/types/types";
@@ -67,12 +68,12 @@ export default function Athletes() {
 
 	const filteredBouts = React.useMemo(() => {
 		let total = 0;
-		console.log("Filtering bouts");
+		//console.log("Filtering bouts");
 
 		return bouts ? {
 			data: bouts.data.filter(bout => {
 				const date = dayjs(bout.attributes.goDateTime ?? bout.attributes.endDateTime ?? FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", bouts)?.attributes.startDateTime);
-				if (startDate && date.isBefore(dayjs(startDate))) {console.log("filtering"); return false};
+				if (startDate && date.isBefore(dayjs(startDate))) { return false };
 				if (endDate && date.isAfter(dayjs(endDate))) return false;
 				if (bout.attributes.winType == "NC") return false;
 				if (bout.attributes.winType == "BYE" && !filter.byes) return false;
@@ -189,32 +190,32 @@ export default function Athletes() {
 			}
 		});
 
-		console.log({seasons});
+		//console.log({seasons});
 
 		return seasons;
 	}, [filteredBouts, filteredWrestlers]);
 
 	const downloadData = async (identityPersonId: string) => {
 		if (identityPersonId == athleteId || identityPersonId == downloadingFor) return;
-		console.log(identityPersonId, athleteId, downloadingFor);
+		//console.log(identityPersonId, athleteId, downloadingFor);
 
 		setDownloadingFor(identityPersonId);
 		setDownloading(true);
 
 		try {
 			const start = performance.now();
-			nprogress.start();
+
+			// Create progress coordinator with two operations: wrestlers (50%) and bouts (50%)
+			const progressCoordinator = new ProgressCoordinator(16);
+			progressCoordinator.registerOperation('wrestlers', 0.5);
+			progressCoordinator.registerOperation('bouts', 0.5);
+			progressCoordinator.start();
+
 			// Fetch all wrestler instances for athlete ID
-			let temp_progress = 0;
 			const wrestlersResponse = await FloAPI.fetchWrestlersByAthleteId<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>(identityPersonId, {
 				pageSize: 0,
 				pageOffset: 0,
-				onProgress: p => {
-					if (p > temp_progress) {
-						temp_progress = p;
-						nprogress.set(p / 2);
-					}
-				},
+				onProgress: progressCoordinator.getCallback('wrestlers'),
 			}, WrestlersIncludeAll);
 
 			wrestlersResponse.data.sort((a, b) => {
@@ -227,18 +228,10 @@ export default function Athletes() {
 				return dayjs(aDate).isBefore(dayjs(bDate)) ? 1 : dayjs(aDate).isAfter(dayjs(bDate)) ? -1 : 0;
 			});
 
-			nprogress.set(50);
-			temp_progress = 50;
-
 			setWrestlers(wrestlersResponse);
 
 			// Fetch all bouts of athlete ID
-			const boutsResponse = await FloAPI.fetchAllBouts<AllBoutRelationships, Exclude<FloObject, BoutObject>>(identityPersonId, p => {
-				if (p > temp_progress) {
-					temp_progress = p;
-					nprogress.set(50 + p / 2);
-				}
-			}, BoutsIncludeAll);
+			const boutsResponse = await FloAPI.fetchAllBouts<AllBoutRelationships, Exclude<FloObject, BoutObject>>(identityPersonId, progressCoordinator.getCallback('bouts'), BoutsIncludeAll);
 
 			const teamIdentityIds = [...new Set(wrestlersResponse.data.map(w => FloAPI.findIncludedObjectById<TeamObject>(w.attributes.teamId, "team", wrestlersResponse)).map(t => t?.attributes.identityTeamId).filter(t => typeof t == "string"))];
 			const teamBasics = teamIdentityIds.map(t => wrestlersResponse.included.find(i => i.type == "team" && i.attributes.identityTeamId == t)?.attributes) as TeamAttributes[];
@@ -283,14 +276,15 @@ export default function Athletes() {
 				setStartDate(oldest);
 				setEndDate(newest);
 
-				console.log(`Oldest bout: ${oldest}, Newest bout: ${newest}`);
+				//console.log(`Oldest bout: ${oldest}, Newest bout: ${newest}`);
 			}
 
-			nprogress.complete();
+			progressCoordinator.complete();
 
-			console.log(((performance.now() - start) / 1000).toFixed(2) + "s");
+			//console.log(((performance.now() - start) / 1000).toFixed(2) + "s");
 		} catch (e) {
 			console.error(e);
+			nprogress.complete();
 		}
 	};
 
@@ -332,9 +326,9 @@ export default function Athletes() {
 			</Stack>
 			{filteredBouts && filteredWrestlers && athleteId ? (
 				<Stack w="100%">
-					<TimeframeSummary title="Total Summary" bouts={filteredBouts} wrestlers={filteredWrestlers} identityPersonId={athleteId} />
+					<TimeframeSummary title="Total Summary" bouts={filteredBouts} wrestlers={filteredWrestlers} identityPersonId={athleteId} total />
 					{seasons.filter(season => season.bouts.meta.total > 0).map(season => (
-						<TimeframeSummary key={season.name} title={season.name} bouts={season.bouts} wrestlers={season.wrestlers} identityPersonId={athleteId} />
+						<TimeframeSummary key={season.name} title={"Season: " + season.name} bouts={season.bouts} wrestlers={season.wrestlers} identityPersonId={athleteId} total={false} />
 					))}
 				</Stack>
 			) : null}
