@@ -77,9 +77,9 @@ export default function CompareAthletes() {
 		try {
 			// Fetch both athletes in parallel for efficiency
 			const [bouts1, wrestlers1, bouts2, wrestlers2] = await Promise.all([
-				FloAPI.fetchBouts<AllBoutRelationships, Exclude<FloObject, BoutObject>>(
+				FloAPI.fetchAllBouts<AllBoutRelationships, Exclude<FloObject, BoutObject>>(
 					id1,
-					{ pageSize: 0, pageOffset: 0, onProgress: p => nprogress.set(p * 0.25) },
+					p => nprogress.set(p * 0.25),
 					BoutsIncludeAll
 				),
 				FloAPI.fetchWrestlersByAthleteId<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>(
@@ -87,9 +87,9 @@ export default function CompareAthletes() {
 					{ pageSize: 0, pageOffset: 0, onProgress: p => nprogress.set(25 + p * 0.25) },
 					WrestlersIncludeAll
 				),
-				FloAPI.fetchBouts<AllBoutRelationships, Exclude<FloObject, BoutObject>>(
+				FloAPI.fetchAllBouts<AllBoutRelationships, Exclude<FloObject, BoutObject>>(
 					id2,
-					{ pageSize: 0, pageOffset: 0, onProgress: p => nprogress.set(50 + p * 0.25) },
+					p => nprogress.set(50 + p * 0.25),
 					BoutsIncludeAll
 				),
 				FloAPI.fetchWrestlersByAthleteId<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>(

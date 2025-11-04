@@ -47,10 +47,10 @@ export default function SearchResultsPage() {
 	}
 
 	React.useEffect(() => {
-		if (broadSearch && broadResults) {
+		if (broadSearch && broadResults && searchParams.get("page") != broadResults?.meta.page.toString()) {
 			searchParams.set("page", broadResults?.meta.page.toString());
 			setSearchParams(searchParams);
-		} else if (narrowResults) {
+		} else if (narrowResults && searchParams.get("page") != narrowResults?.meta.page.toString()) {
 			searchParams.set("page", narrowResults?.meta.page.toString());
 			setSearchParams(searchParams);
 		}
@@ -143,6 +143,7 @@ export default function SearchResultsPage() {
 	};
 
 	const switchPage = (page: number) => {
+		if (page == (broadResults?.meta.page ?? narrowResults?.meta.page)) return;
 		if (search) searchFor(search, page, broadSearch).then(data => {
 			if (broadSearch) setBroadResults(data as SearchResultsTyped<true>);
 			else setNarrowResults(data as SearchResultsTyped<false>);
@@ -157,9 +158,6 @@ export default function SearchResultsPage() {
 
 	return (
 		<Stack>
-			<Button leftSection={<IconArrowLeft />} onClick={() => navigate(-1)} variant="subtle" size="md" style={{ alignSelf: "flex-start", margin: "1rem 0" }}>
-				Back
-			</Button>
 			<Title order={1}>{broadSearch ? "Broad" : "Narrow"} {loading ? "Search...": "Results"}</Title>
 			{loading ? (
 				[...Array<string>(PAGE_SIZE)].map((_, i) => (

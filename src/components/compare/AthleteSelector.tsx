@@ -1,47 +1,39 @@
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { Button, Card, Group, Stack, Text, TextInput, Title } from "@mantine/core";
-import { ID_REGEX } from "../../main";
+import { Button, Card, Group, Stack, Text, Title } from "@mantine/core";
+import InlineAthleteSearch from "./InlineAthleteSearch";
 
 export default function AthleteSelector() {
 	const navigate = useNavigate();
-
 	const [searchParams] = useSearchParams();
 
-	const [athlete1Query, setAthlete1Query] = useState<string>(searchParams.get("athlete1") || "");
-	const [athlete2Query, setAthlete2Query] = useState<string>(searchParams.get("athlete2") || "");
-	const [athlete1Id, setAthlete1Id] = useState<string | null>(searchParams.get("athlete1"));
-	const [athlete2Id, setAthlete2Id] = useState<string | null>(searchParams.get("athlete2"));
+	// State for both athletes
+	const [athlete1Query, setAthlete1Query] = useState<string>(
+		searchParams.get("athlete1") || ""
+	);
+	const [athlete2Query, setAthlete2Query] = useState<string>(
+		searchParams.get("athlete2") || ""
+	);
+	const [athlete1Id, setAthlete1Id] = useState<string | null>(
+		searchParams.get("athlete1")
+	);
+	const [athlete2Id, setAthlete2Id] = useState<string | null>(
+		searchParams.get("athlete2")
+	);
 
-	// Auto-detect if input is UUID or name
-	const handleAthlete1Input = (value: string) => {
-		setAthlete1Query(value);
-		const test = ID_REGEX.exec(value);
-		if (test) {
-			setAthlete1Id(test[0]);
-		} else {
-			setAthlete1Id(null);
+	// Handle athlete 1 selection
+	const handleAthlete1Select = (id: string | null, name: string) => {
+		setAthlete1Id(id);
+		if (id) {
+			setAthlete1Query(name); // Set input to show selected name
 		}
 	};
 
-	const handleAthlete2Input = (value: string) => {
-		setAthlete2Query(value);
-		const test = ID_REGEX.exec(value);
-		if (test) {
-			setAthlete2Id(test[0]);
-		} else {
-			setAthlete2Id(null);
-		}
-	};
-
-	// Navigate to search page for name queries
-	const searchAthlete = (query: string, athleteNumber: 1 | 2) => {
-		if (!query) return;
-
-		const test = ID_REGEX.exec(query);
-		if (!test) {
-			// Navigate to search with a flag indicating which athlete to select
-			navigate(`/search?q=${encodeURIComponent(query)}&page=1&ofp=false&selectFor=athlete${athleteNumber}&returnTo=/compare&athlete1=${athlete1Id || ""}&athlete2=${athlete2Id || ""}`);
+	// Handle athlete 2 selection
+	const handleAthlete2Select = (id: string | null, name: string) => {
+		setAthlete2Id(id);
+		if (id) {
+			setAthlete2Query(name);
 		}
 	};
 
@@ -57,76 +49,42 @@ export default function AthleteSelector() {
 	return (
 		<Card w="100%" maw={800} p="xl" shadow="sm">
 			<Stack gap="lg">
-				<Title order={2} ta="center">Select Two Wrestlers to Compare</Title>
+				<Title order={2} ta="center">
+					Select Two Wrestlers to Compare
+				</Title>
 
 				<Group align="start" grow>
-					{/* Athlete 1 Selection */}
-					<Stack gap="sm">
-						<Text fw={600} size="lg">Wrestler 1</Text>
-						<TextInput
-							value={athlete1Query}
-							onChange={e => handleAthlete1Input(e.currentTarget.value)}
-							placeholder="Enter name or UUID..."
-							size="md"
-							description={athlete1Id ? "UUID detected" : "Enter full UUID or search by name"}
-						/>
-						{!athlete1Id && athlete1Query && (
-							<Button
-								variant="light"
-								onClick={() => searchAthlete(athlete1Query, 1)}
-								fullWidth
-							>
-								Search for "{athlete1Query}"
-							</Button>
-						)}
-						{athlete1Id && (
-							<Text size="sm" c="green">
-								✓ Wrestler 1 selected
-							</Text>
-						)}
-					</Stack>
+					{/* Athlete 1 Inline Search */}
+					<InlineAthleteSearch
+						athleteNumber={1}
+						value={athlete1Query}
+						selectedId={athlete1Id}
+						onQueryChange={setAthlete1Query}
+						onAthleteSelect={handleAthlete1Select}
+						label="Wrestler 1"
+					/>
 
-					{/* Athlete 2 Selection */}
-					<Stack gap="sm">
-						<Text fw={600} size="lg">Wrestler 2</Text>
-						<TextInput
-							value={athlete2Query}
-							onChange={e => handleAthlete2Input(e.currentTarget.value)}
-							placeholder="Enter name or UUID..."
-							size="md"
-							description={athlete2Id ? "UUID detected" : "Enter full UUID or search by name"}
-						/>
-						{!athlete2Id && athlete2Query && (
-							<Button
-								variant="light"
-								onClick={() => searchAthlete(athlete2Query, 2)}
-								fullWidth
-							>
-								Search for "{athlete2Query}"
-							</Button>
-						)}
-						{athlete2Id && (
-							<Text size="sm" c="green">
-								✓ Wrestler 2 selected
-							</Text>
-						)}
-					</Stack>
+					{/* Athlete 2 Inline Search */}
+					<InlineAthleteSearch
+						athleteNumber={2}
+						value={athlete2Query}
+						selectedId={athlete2Id}
+						onQueryChange={setAthlete2Query}
+						onAthleteSelect={handleAthlete2Select}
+						label="Wrestler 2"
+					/>
 				</Group>
 
 				{/* Error messages */}
 				{athlete1Id && athlete2Id && athlete1Id === athlete2Id && (
 					<Text c="red" size="sm" ta="center">
-						Cannot compare a wrestler with themselves. Please select two different wrestlers.
+						Cannot compare a wrestler with themselves. Please select two different
+						wrestlers.
 					</Text>
 				)}
 
 				{/* Compare Button */}
-				<Button
-					size="lg"
-					onClick={handleCompare}
-					disabled={!canCompare}
-					fullWidth
-				>
+				<Button size="lg" onClick={handleCompare} disabled={!canCompare} fullWidth>
 					{!athlete1Id && !athlete2Id
 						? "Select both wrestlers to compare"
 						: !athlete1Id
@@ -139,8 +97,8 @@ export default function AthleteSelector() {
 				</Button>
 
 				<Text size="sm" c="dimmed" ta="center">
-					Tip: You can paste a wrestler's UUID directly, or search by name. To get a wrestler's UUID,
-					visit their profile page and copy the ID from the URL.
+					Start typing a wrestler's name to see search results, or paste a UUID
+					directly.
 				</Text>
 			</Stack>
 		</Card>

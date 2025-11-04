@@ -1,5 +1,5 @@
 import React from "react";
-import { Checkbox, Group, Overlay, Stack } from "@mantine/core";
+import { Anchor, Checkbox, Group, Overlay, Stack } from "@mantine/core";
 import { nprogress } from "@mantine/nprogress";
 
 
@@ -11,7 +11,7 @@ import { BoutsIncludeAll, FloObject, WrestlersIncludeAll } from "./api/types/typ
 import { BoutObject } from "./api/types/objects/bout";
 
 import { AllBoutRelationships, AllWrestlerRelationships } from "./api/types/relationships";
-import { useParams } from "react-router";
+import { useParams, Link } from "react-router";
 
 import dayjs from "dayjs";
 import { TeamAttributes, TeamObject } from "./api/types/objects/team";
@@ -233,15 +233,11 @@ export default function Athletes() {
 			setWrestlers(wrestlersResponse);
 
 			// Fetch all bouts of athlete ID
-			const boutsResponse = await FloAPI.fetchBouts<AllBoutRelationships, Exclude<FloObject, BoutObject>>(identityPersonId, {
-				pageSize: 0,
-				pageOffset: 0,
-				onProgress: p => {
-					if (p > temp_progress) {
-						temp_progress = p;
-						nprogress.set(50 + p / 2);
-					}
-				},
+			const boutsResponse = await FloAPI.fetchAllBouts<AllBoutRelationships, Exclude<FloObject, BoutObject>>(identityPersonId, p => {
+				if (p > temp_progress) {
+					temp_progress = p;
+					nprogress.set(50 + p / 2);
+				}
 			}, BoutsIncludeAll);
 
 			const teamIdentityIds = [...new Set(wrestlersResponse.data.map(w => FloAPI.findIncludedObjectById<TeamObject>(w.attributes.teamId, "team", wrestlersResponse)).map(t => t?.attributes.identityTeamId).filter(t => typeof t == "string"))];
@@ -302,6 +298,15 @@ export default function Athletes() {
 		<Stack w="100%" align="center">
 			{downloading ? <Overlay backgroundOpacity={0} blur={2} h={"100%"} fixed={true} /> : null}
 			{basicInfo ? <GeneralInfoDisplay info={basicInfo} setIgnoredTeams={teams => setFilter({ ...filter, ignoredTeams: teams })} reset={false} setReset={() => {}} /> : null}
+			{athleteId && (
+				<Anchor
+					component={Link}
+					to={`/compare?athlete1=${athleteId}`}
+					size="md"
+				>
+					Compare with Another Wrestler
+				</Anchor>
+			)}
 			<BoutDateFilter startDate={startDate} setStartDate={setStartDate} endDate={endDate} setEndDate={setEndDate} oldestBout={oldestBout} newestBout={newestBout} />
 			<Stack gap="sm" mb="md" align="center">
 				<Group content="center">

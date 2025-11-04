@@ -13,8 +13,8 @@ export default function InfoButton() {
 				size="lg"
 				style={{
 					position: "absolute",
-					top: "2rem",
-					left: "2rem",
+					top: "0.5rem",
+					left: "0.5rem",
 					zIndex: 1000,
 				}}
 			>
