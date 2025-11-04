@@ -4,6 +4,7 @@ import { Card, Group, Overlay, Stack, Text, Title } from "@mantine/core";
 import { nprogress } from "@mantine/nprogress";
 
 import FloAPI from "../../api/FloAPI";
+import { ProgressCoordinator } from "../../utils/ProgressCoordinator";
 import { BoutsResponse, WrestlersResponse } from "../../api/types/responses";
 import { BoutObject } from "../../api/types/objects/bout";
 import { WrestlerObject } from "../../api/types/objects/wrestler";
@@ -72,29 +73,36 @@ export default function CompareAthletes() {
 
 	const loadComparisonData = async (id1: string, id2: string) => {
 		setDownloading(true);
-		nprogress.start();
+
+		// Create progress coordinator with 4 operations, each weighted equally at 25%
+		const progressCoordinator = new ProgressCoordinator(16);
+		progressCoordinator.registerOperation('athlete1-bouts', 0.25);
+		progressCoordinator.registerOperation('athlete1-wrestlers', 0.25);
+		progressCoordinator.registerOperation('athlete2-bouts', 0.25);
+		progressCoordinator.registerOperation('athlete2-wrestlers', 0.25);
+		progressCoordinator.start();
 
 		try {
 			// Fetch both athletes in parallel for efficiency
 			const [bouts1, wrestlers1, bouts2, wrestlers2] = await Promise.all([
 				FloAPI.fetchAllBouts<AllBoutRelationships, Exclude<FloObject, BoutObject>>(
 					id1,
-					p => nprogress.set(p * 0.25),
+					progressCoordinator.getCallback('athlete1-bouts'),
 					BoutsIncludeAll
 				),
 				FloAPI.fetchWrestlersByAthleteId<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>(
 					id1,
-					{ pageSize: 0, pageOffset: 0, onProgress: p => nprogress.set(25 + p * 0.25) },
+					{ pageSize: 0, pageOffset: 0, onProgress: progressCoordinator.getCallback('athlete1-wrestlers') },
 					WrestlersIncludeAll
 				),
 				FloAPI.fetchAllBouts<AllBoutRelationships, Exclude<FloObject, BoutObject>>(
 					id2,
-					p => nprogress.set(50 + p * 0.25),
+					progressCoordinator.getCallback('athlete2-bouts'),
 					BoutsIncludeAll
 				),
 				FloAPI.fetchWrestlersByAthleteId<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>(
 					id2,
-					{ pageSize: 0, pageOffset: 0, onProgress: p => nprogress.set(75 + p * 0.25) },
+					{ pageSize: 0, pageOffset: 0, onProgress: progressCoordinator.getCallback('athlete2-wrestlers') },
 					WrestlersIncludeAll
 				),
 			]);
@@ -167,7 +175,7 @@ export default function CompareAthletes() {
 			// Update page title
 			document.title = `${basicInfo1.name} vs ${basicInfo2.name} - FloStats`;
 
-			nprogress.complete();
+			progressCoordinator.complete();
 		} catch (e) {
 			console.error("Error loading comparison data:", e);
 			nprogress.complete();

@@ -29,7 +29,7 @@ export default function WeightChart({ h = 400, data, startDate, endDate, chartPr
 
 			const weightClass = FloAPI.findIncludedObjectById(wrestler.attributes.weightClassId, "weightClass", data)?.attributes as WeightClassAttributes;
 			if (weightClass) {
-				console.log(weightClass);
+				//console.log(weightClass);
 				const obj = {
 					date: new Date(event.startDateTime).getTime(),
 					"Weight Class Max": weightClass.maxWeight,

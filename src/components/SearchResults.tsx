@@ -2,6 +2,7 @@ import { nprogress } from "@mantine/nprogress";
 import React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import FloAPI, { SearchResultsTyped } from "../api/FloAPI";
+import { ProgressCoordinator } from "../utils/ProgressCoordinator";
 import { NodeResult, SearchResultPerson, SearchResultPersonUseOfp, SearchResults } from "../api/types/responses";
 import { Button, Card, Pagination, Skeleton, Stack, Text, Title } from "@mantine/core";
 import dayjs from "dayjs";
@@ -70,13 +71,13 @@ export default function SearchResultsPage() {
 			if (broadSearch != (ofp === "true")) setBroadSearch(ofp === "true");
 		}
 
-		console.log(extraData);
+		//console.log(extraData);
 	}, [broadSearch, extraData, search, searchParams]);
 
 	React.useEffect(() => {
 		if (!search) return;
 		const page = parseInt((searchParams.get("page") ?? "1"));
-		console.log(`Searching for ${search} (page ${page})`);
+		//console.log(`Searching for ${search} (page ${page})`);
 
 		setBroadResults(null);
 		setNarrowResults(null);
@@ -90,7 +91,12 @@ export default function SearchResultsPage() {
 	const searchFor = async <T extends boolean>(name: string, page: number = 1, useOfp: T) => {
 		if (page > 1000) page = 1000;
 
-		nprogress.start();
+		// Create progress coordinator
+		const progressCoordinator = new ProgressCoordinator(16);
+		progressCoordinator.registerOperation('order-search', 0.5);
+		progressCoordinator.registerOperation('data-search', 0.5);
+		progressCoordinator.start();
+
 		setLoading(true);
 
 		if (useOfp) setLoadingExtra(true);
@@ -99,7 +105,7 @@ export default function SearchResultsPage() {
 		const orderData = await FloAPI.searchByName(name, {
 			limit: PAGE_SIZE,
 			page,
-			onProgress: v => nprogress.set(v / 2),
+			onProgress: progressCoordinator.getCallback('order-search'),
 			useOfp: true,
 		});
 
@@ -109,28 +115,30 @@ export default function SearchResultsPage() {
 			data = await FloAPI.searchByName<T>(name, {
 				limit: PAGE_SIZE,
 				page,
-				onProgress: v => nprogress.set(v / 2 + 50),
+				onProgress: progressCoordinator.getCallback('data-search'),
 				useOfp,
 			});
 		} else {
+			// Mark the second operation as complete since we're not doing it
+			progressCoordinator.updateOperation('data-search', 100);
 			data = orderData as SearchResultsTyped<T>;
 			setLoadingExtra(true);
 			const extraData = new Map();
 			new Promise<void>(async resolve => {
-				console.log("Loading extra data...", loadingExtra, data.data);
+				//console.log("Loading extra data...", loadingExtra, data.data);
 				for (const result of data.data ?? []) {
 					const extra = await FloAPI.fetchFromNode(result.node.id);
 					extraData.set(result.node.id, extra);
 				}
 				resolve();
 			}).then(() => {
-				console.log(`Loaded ${extraData.size} extra data`);
+				//console.log(`Loaded ${extraData.size} extra data`);
 				setExtraData(extraData);
 				setLoadingExtra(false);
 			});
 		}
 
-		nprogress.complete();
+		progressCoordinator.complete();
 		setLoading(false);
 
 		// Extract sequence of IDs
