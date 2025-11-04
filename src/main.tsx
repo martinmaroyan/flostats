@@ -45,7 +45,7 @@ const themeOverride = createTheme({
 const resolver: CSSVariablesResolver = theme => ({
 	variables: {
 		"--mantine-win-color": theme.colors.green[7],
-		"--mantine-loss-color": theme.colors.red[1],
+		"--mantine-loss-color": theme.colors.red[6],
 	},
 	light: {},
 	dark: {},
@@ -60,9 +60,8 @@ ReactDOM.createRoot(root!).render(
 				<InfoButton />
 				<ThemeToggle styles={{ root: {
 					position: "absolute",
-					top: 0,
-					right: 0,
-					margin: "2rem",
+					top: "0.5rem",
+					right: "0.5rem",
 				} }} size="lg" />
 				<Routes>
 					<Route path="/" element={<></>} />

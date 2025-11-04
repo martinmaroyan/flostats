@@ -8,7 +8,6 @@ import { CommonOpponentData } from "../../utils/commonOpponents";
 import { BoutsResponse } from "../../api/types/responses";
 import FloAPI from "../../api/FloAPI";
 import { EventObject } from "../../api/types/objects/event";
-import { TeamObject } from "../../api/types/objects/team";
 import { WeightClassObject } from "../../api/types/objects/weightClass";
 import { DivisionObject } from "../../api/types/objects/division";
 
@@ -135,14 +134,22 @@ export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, a
 			expanded,
 		},
 		onExpandedChange: setExpanded,
+		mantineDetailPanelProps: {
+			style: {
+				display: "flex",
+				justifyContent: "center",
+				width: "100%",
+				backgroundColor: "var(--mantine-color-dark-7)",
+			}
+		},
 		renderDetailPanel: ({ row }) => {
 			const opponent = row.original;
 
 			return (
-				<Stack gap="md" p="md" bg="var(--mantine-color-dark-7)">
+				<Stack gap="xs" pb="md" bg="var(--mantine-color-dark-7)">
 					<Text fw={600} size="lg">Individual Matches</Text>
 
-					<Group align="start" grow>
+					<Group align="center" grow>
 						{/* Wrestler 1 Matches */}
 						<Stack gap="xs">
 							<Text fw={600} c="dimmed">{athlete1Name} vs {opponent.opponentName}</Text>
