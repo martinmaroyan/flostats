@@ -4,6 +4,7 @@ import Athletes from "./Athletes.tsx";
 import { BrowserRouter, Route, Routes } from "react-router";
 import { createTheme, CSSVariablesResolver, MantineProvider } from "@mantine/core";
 import { NavigationProgress } from "@mantine/nprogress";
+import { HelmetProvider } from "react-helmet-async";
 
 import SearchBar from "./components/SearchBar.tsx";
 import InfoButton from "./components/InfoButton.tsx";
@@ -53,24 +54,26 @@ const resolver: CSSVariablesResolver = theme => ({
 
 ReactDOM.createRoot(root!).render(
 	<React.StrictMode>
-		<MantineProvider defaultColorScheme="dark" theme={themeOverride} cssVariablesResolver={resolver}>
-			<NavigationProgress />
-			<BrowserRouter>
-				<SearchBar loading={false} />
-				<InfoButton />
-				<ThemeToggle styles={{ root: {
-					position: "absolute",
-					top: "0.5rem",
-					right: "0.5rem",
-				} }} size="lg" />
-				<Routes>
-					<Route path="/" element={<></>} />
-					<Route path="/search" element={<SearchResultsPage />} />
-					<Route path="/athletes/:id" element={<Athletes />} />
-					<Route path="/teams/:id" element={<Athletes />} />
-					<Route path="/compare" element={<CompareAthletes />} />
-				</Routes>
-			</BrowserRouter>
-		</MantineProvider>
+		<HelmetProvider>
+			<MantineProvider defaultColorScheme="dark" theme={themeOverride} cssVariablesResolver={resolver}>
+				<NavigationProgress />
+				<BrowserRouter>
+					<SearchBar loading={false} />
+					<InfoButton />
+					<ThemeToggle styles={{ root: {
+						position: "absolute",
+						top: "0.5rem",
+						right: "0.5rem",
+					} }} size="lg" />
+					<Routes>
+						<Route path="/" element={<></>} />
+						<Route path="/search" element={<SearchResultsPage />} />
+						<Route path="/athletes/:id" element={<Athletes />} />
+						<Route path="/teams/:id" element={<Athletes />} />
+						<Route path="/compare" element={<CompareAthletes />} />
+					</Routes>
+				</BrowserRouter>
+			</MantineProvider>
+		</HelmetProvider>
 	</React.StrictMode>,
 );

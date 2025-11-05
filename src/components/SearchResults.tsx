@@ -6,6 +6,7 @@ import { ProgressCoordinator } from "../utils/ProgressCoordinator";
 import { NodeResult, SearchResultPerson, SearchResultPersonUseOfp, SearchResults } from "../api/types/responses";
 import { Button, Card, Pagination, Skeleton, Stack, Text, Title } from "@mantine/core";
 import dayjs from "dayjs";
+import { Helmet } from "react-helmet-async";
 
 import styles from "./SearchResults.module.css";
 import { IconArrowLeft } from "@tabler/icons-react";
@@ -166,6 +167,34 @@ export default function SearchResultsPage() {
 
 	return (
 		<Stack>
+			{search && (
+				<Helmet>
+					<title>{search} - Wrestler Search Results | FloStats</title>
+					<meta
+						name="description"
+						content={`Search results for "${search}" - Find wrestlers and view their complete match history, statistics, and career records on FloStats.`}
+					/>
+					<link rel="canonical" href={`https://flostats.com/search?q=${encodeURIComponent(search)}&page=${searchParams.get("page") || "1"}`} />
+
+					{/* Open Graph */}
+					<meta property="og:type" content="website" />
+					<meta property="og:url" content={`https://flostats.com/search?q=${encodeURIComponent(search)}`} />
+					<meta property="og:title" content={`${search} - Wrestler Search Results | FloStats`} />
+					<meta
+						property="og:description"
+						content={`Search results for "${search}" on FloStats - Wrestling statistics and match history database.`}
+					/>
+
+					{/* Twitter */}
+					<meta property="twitter:card" content="summary" />
+					<meta property="twitter:url" content={`https://flostats.com/search?q=${encodeURIComponent(search)}`} />
+					<meta property="twitter:title" content={`${search} - Wrestler Search | FloStats`} />
+					<meta
+						property="twitter:description"
+						content={`Search results for "${search}" on FloStats`}
+					/>
+				</Helmet>
+			)}
 			<Title order={1}>{broadSearch ? "Broad" : "Narrow"} {loading ? "Search...": "Results"}</Title>
 			{loading ? (
 				[...Array<string>(PAGE_SIZE)].map((_, i) => (
