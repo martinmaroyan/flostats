@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Card, Group, Overlay, Stack, Text, Title } from "@mantine/core";
 import { nprogress } from "@mantine/nprogress";
+import { Helmet } from "react-helmet-async";
 
 import FloAPI from "../../api/FloAPI";
 import { ProgressCoordinator } from "../../utils/ProgressCoordinator";
@@ -186,6 +187,55 @@ export default function CompareAthletes() {
 
 	return (
 		<Stack w="100%" align="center" p="md">
+			{athlete1Info && athlete2Info && (
+				<Helmet>
+					<title>{athlete1Info.name} vs {athlete2Info.name} - Head-to-Head Comparison | FloStats</title>
+					<meta
+						name="description"
+						content={`Compare ${athlete1Info.name} and ${athlete2Info.name} head-to-head. ${
+							h2hMatches.length > 0
+								? `Direct matchups: ${h2hMatches.filter(m => m.athlete1Won).length}-${h2hMatches.length - h2hMatches.filter(m => m.athlete1Won).length} series. `
+								: ""
+						}${
+							commonOpponents.length > 0
+								? `${commonOpponents.length} common opponents. `
+								: ""
+						}View detailed statistics, match history, and performance comparison.`}
+					/>
+					<link rel="canonical" href={`https://flostats.com/compare?athlete1=${athlete1Id}&athlete2=${athlete2Id}`} />
+
+					{/* Open Graph */}
+					<meta property="og:type" content="website" />
+					<meta property="og:url" content={`https://flostats.com/compare?athlete1=${athlete1Id}&athlete2=${athlete2Id}`} />
+					<meta property="og:title" content={`${athlete1Info.name} vs ${athlete2Info.name} - Wrestling Comparison | FloStats`} />
+					<meta
+						property="og:description"
+						content={`Head-to-head comparison: ${athlete1Info.name} vs ${athlete2Info.name}${
+							h2hMatches.length > 0
+								? ` - Series record: ${h2hMatches.filter(m => m.athlete1Won).length}-${h2hMatches.length - h2hMatches.filter(m => m.athlete1Won).length}`
+								: ""
+						}${
+							commonOpponents.length > 0
+								? `, ${commonOpponents.length} common opponents`
+								: ""
+						}.`}
+					/>
+
+					{/* Twitter */}
+					<meta property="twitter:card" content="summary" />
+					<meta property="twitter:url" content={`https://flostats.com/compare?athlete1=${athlete1Id}&athlete2=${athlete2Id}`} />
+					<meta property="twitter:title" content={`${athlete1Info.name} vs ${athlete2Info.name} | FloStats`} />
+					<meta
+						property="twitter:description"
+						content={`Head-to-head wrestling comparison${
+							h2hMatches.length > 0
+								? `: ${h2hMatches.filter(m => m.athlete1Won).length}-${h2hMatches.length - h2hMatches.filter(m => m.athlete1Won).length} series`
+								: ""
+						}`}
+					/>
+				</Helmet>
+			)}
+
 			{downloading && <Overlay backgroundOpacity={0} blur={2} h="100%" fixed={true} />}
 
 			<Title order={1}>Wrestler Comparison</Title>
