@@ -1,6 +1,7 @@
 import React from "react";
 import { Anchor, Checkbox, Group, Overlay, Stack } from "@mantine/core";
 import { nprogress } from "@mantine/nprogress";
+import { Helmet } from "react-helmet-async";
 
 
 import { BoutsResponse, WrestlersResponse } from "./api/types/responses";
@@ -288,8 +289,81 @@ export default function Athletes() {
 		}
 	};
 
+	// Calculate stats for SEO meta description
+	const athleteStats = React.useMemo(() => {
+		if (!filteredBouts || !id) return null;
+
+		let wins = 0;
+		let losses = 0;
+		let pins = 0;
+
+		filteredBouts.data.forEach(bout => {
+			const winner = FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.winnerWrestlerId, "wrestler", filteredBouts);
+			const isWin = winner?.attributes.identityPersonId === id;
+
+			if (isWin) {
+				wins++;
+				if (bout.attributes.winType === "FALL") pins++;
+			} else {
+				losses++;
+			}
+		});
+
+		const total = wins + losses;
+		const winPercentage = total > 0 ? ((wins / total) * 100).toFixed(1) : "0.0";
+
+		return { wins, losses, pins, winPercentage, total };
+	}, [filteredBouts, id]);
+
 	return (
 		<Stack w="100%" align="center">
+			{basicInfo && athleteStats && (
+				<Helmet>
+					<title>{basicInfo.name} - Wrestling Stats & Match History | FloStats</title>
+					<meta
+						name="description"
+						content={`${basicInfo.name}'s complete wrestling record: ${athleteStats.wins}-${athleteStats.losses} (${athleteStats.winPercentage}% win rate) with ${athleteStats.pins} pins. View detailed match history, tournament placements, and career statistics.`}
+					/>
+					<link rel="canonical" href={`https://flostats.com/athletes/${id}`} />
+
+					{/* Open Graph */}
+					<meta property="og:type" content="profile" />
+					<meta property="og:url" content={`https://flostats.com/athletes/${id}`} />
+					<meta property="og:title" content={`${basicInfo.name} - Wrestling Stats & Match History | FloStats`} />
+					<meta
+						property="og:description"
+						content={`${basicInfo.name}'s complete wrestling record: ${athleteStats.wins}-${athleteStats.losses} (${athleteStats.winPercentage}% win rate) with ${athleteStats.pins} pins.`}
+					/>
+
+					{/* Twitter */}
+					<meta property="twitter:card" content="summary" />
+					<meta property="twitter:url" content={`https://flostats.com/athletes/${id}`} />
+					<meta property="twitter:title" content={`${basicInfo.name} - Wrestling Stats | FloStats`} />
+					<meta
+						property="twitter:description"
+						content={`${basicInfo.name}: ${athleteStats.wins}-${athleteStats.losses} record, ${athleteStats.pins} pins`}
+					/>
+
+					{/* Schema.org Person structured data */}
+					<script type="application/ld+json">
+						{JSON.stringify({
+							"@context": "https://schema.org",
+							"@type": "Person",
+							"name": basicInfo.name,
+							"description": `Wrestler with ${athleteStats.wins}-${athleteStats.losses} record`,
+							...(basicInfo.dateOfBirth && { "birthDate": basicInfo.dateOfBirth.format("YYYY-MM-DD") }),
+							"sport": "Wrestling",
+							"memberOf": basicInfo.teams.map(team => ({
+								"@type": "SportsTeam",
+								"name": team.attributes.name,
+								"sport": "Wrestling"
+							})),
+							"url": `https://flostats.com/athletes/${id}`,
+							"sameAs": `https://arena.flowrestling.org/people/${id}`
+						})}
+					</script>
+				</Helmet>
+			)}
 			{downloading ? <Overlay backgroundOpacity={0} blur={2} h={"100%"} fixed={true} /> : null}
 			{basicInfo ? <GeneralInfoDisplay info={basicInfo} setIgnoredTeams={teams => setFilter({ ...filter, ignoredTeams: teams })} reset={false} setReset={() => {}} /> : null}
 			{athleteId && (
