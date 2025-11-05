@@ -37,6 +37,7 @@
 		"mantine-react-table": "^2.0.0-beta.7",
 		"react": "^18.3.1",
 		"react-dom": "^18.3.1",
+		"react-helmet-async": "^2.0.5",
 		"react-router": "^7.1.1",
 		"recharts": "^2.15.0"
 	},
