@@ -6,8 +6,7 @@ import { createTheme, CSSVariablesResolver, MantineProvider } from "@mantine/cor
 import { NavigationProgress } from "@mantine/nprogress";
 import { HelmetProvider } from "react-helmet-async";
 
-import SearchBar from "./components/SearchBar.tsx";
-import InfoButton from "./components/InfoButton.tsx";
+import Layout from "./components/Layout.tsx";
 
 import "./index.css";
 import "@mantine/core/styles.css";
@@ -18,8 +17,8 @@ import "@mantine/carousel/styles.css";
 import "mantine-react-table/styles.css";
 
 import SearchResultsPage from "./components/SearchResults.tsx";
-import ThemeToggle from "./components/ThemeToggle.tsx";
 import CompareAthletes from "./components/compare/CompareAthletes.tsx";
+import HomePage from "./components/HomePage.tsx";
 
 export const ID_REGEX = new RegExp("[0-9(a-f|A-F)]{8}-[0-9(a-f|A-F)]{4}-4[0-9(a-f|A-F)]{3}-[89ab][0-9(a-f|A-F)]{3}-[0-9(a-f|A-F)]{12}"); // UUID v4
 
@@ -58,20 +57,15 @@ ReactDOM.createRoot(root!).render(
 			<MantineProvider defaultColorScheme="dark" theme={themeOverride} cssVariablesResolver={resolver}>
 				<NavigationProgress />
 				<BrowserRouter>
-					<SearchBar loading={false} />
-					<InfoButton />
-					<ThemeToggle styles={{ root: {
-						position: "absolute",
-						top: "0.5rem",
-						right: "0.5rem",
-					} }} size="lg" />
-					<Routes>
-						<Route path="/" element={<></>} />
-						<Route path="/search" element={<SearchResultsPage />} />
-						<Route path="/athletes/:id" element={<Athletes />} />
-						<Route path="/teams/:id" element={<Athletes />} />
-						<Route path="/compare" element={<CompareAthletes />} />
-					</Routes>
+					<Layout>
+						<Routes>
+							<Route path="/" element={<HomePage />} />
+							<Route path="/search" element={<SearchResultsPage />} />
+							<Route path="/athletes/:id" element={<Athletes />} />
+							<Route path="/teams/:id" element={<Athletes />} />
+							<Route path="/compare" element={<CompareAthletes />} />
+						</Routes>
+					</Layout>
 				</BrowserRouter>
 			</MantineProvider>
 		</HelmetProvider>

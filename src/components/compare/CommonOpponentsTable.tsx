@@ -27,7 +27,7 @@ export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, a
 			header: "Opponent",
 			accessorKey: "opponentName",
 			Cell: ({ row }) => (
-				<Link to={`/athletes/${row.original.opponentId}`} style={{ textDecoration: "none" }}>
+				<Link target="_blank" to={`/athletes/${row.original.opponentId}`} style={{ textDecoration: "none" }}>
 					<Text fw={500}>{row.original.opponentName}</Text>
 				</Link>
 			),

@@ -32,7 +32,7 @@ export default function ComparisonSummary({ summary, athlete1Name, athlete2Name 
 					{/* Athlete 1 Stats */}
 					<Card p="md" withBorder>
 						<Stack gap="sm" align="center">
-							<Text fw={700} size="lg" ta="center">{athlete1Name}</Text>
+							<Text fw={700} size="lg" ta="center" c={athlete1HasAdvantage ? "var(--mantine-win-color)" : athlete2HasAdvantage ? "red" : "dimmed"}>{athlete1Name}</Text>
 
 							<Group gap={4}>
 								<Text fw={600}>Record:</Text>
@@ -50,12 +50,6 @@ export default function ComparisonSummary({ summary, athlete1Name, athlete2Name 
 									{summary.athlete1WinPercentage.toFixed(1)}%
 								</Text>
 							</Group>
-
-							{athlete1HasAdvantage && (
-								<Text size="sm" c="var(--mantine-win-color)" fw={600}>
-									✓ Better Record
-								</Text>
-							)}
 						</Stack>
 					</Card>
 
@@ -67,7 +61,7 @@ export default function ComparisonSummary({ summary, athlete1Name, athlete2Name 
 					{/* Athlete 2 Stats */}
 					<Card p="md" withBorder>
 						<Stack gap="sm" align="center">
-							<Text fw={700} size="lg" ta="center">{athlete2Name}</Text>
+							<Text fw={700} size="lg" ta="center" c={athlete2HasAdvantage ? "var(--mantine-win-color)" : athlete1HasAdvantage ? "red" : "dimmed"}>{athlete2Name}</Text>
 
 							<Group gap={4}>
 								<Text fw={600}>Record:</Text>
@@ -85,26 +79,9 @@ export default function ComparisonSummary({ summary, athlete1Name, athlete2Name 
 									{summary.athlete2WinPercentage.toFixed(1)}%
 								</Text>
 							</Group>
-
-							{athlete2HasAdvantage && (
-								<Text size="sm" c="var(--mantine-win-color)" fw={600}>
-									✓ Better Record
-								</Text>
-							)}
 						</Stack>
 					</Card>
 				</Group>
-
-				{/* Overall Verdict */}
-				{isTied ? (
-					<Text ta="center" c="dimmed" fw={600}>
-						Both wrestlers have identical records against common opponents
-					</Text>
-				) : (
-					<Text ta="center" c="var(--mantine-win-color)" fw={600} size="lg">
-						{athlete1HasAdvantage ? athlete1Name : athlete2Name} has the better record against common opponents
-					</Text>
-				)}
 			</Stack>
 		</Card>
 	);

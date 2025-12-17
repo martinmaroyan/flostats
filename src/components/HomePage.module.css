@@ -1,0 +1,124 @@
+.container {
+	max-width: 700px;
+	margin: 0 auto;
+	padding: 1rem 1rem 3rem;
+}
+
+.header {
+	text-align: center;
+	margin-top: 1rem;
+}
+
+.title {
+	font-size: 2.5rem;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	margin-bottom: 0.5rem;
+}
+
+.subtitle {
+	max-width: 480px;
+	margin: 0 auto;
+	line-height: 1.6;
+}
+
+.searchCard {
+	background-color: var(--mantine-color-dark-7);
+	border: 1px solid var(--mantine-color-dark-5);
+}
+
+[data-mantine-color-scheme="light"] .searchCard {
+	background-color: var(--mantine-color-gray-0);
+	border: 1px solid var(--mantine-color-gray-3);
+}
+
+.searchInput {
+	font-size: 1rem;
+}
+
+.searchInput::placeholder {
+	color: var(--mantine-color-dimmed);
+}
+
+.kbd {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+.recentSection {
+	text-align: center;
+}
+
+.recentChip {
+	padding-right: 0.25rem;
+}
+
+.featuresSection {
+	margin-top: 0.5rem;
+}
+
+.featuresGrid {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 1rem;
+}
+
+.featureCard {
+	width: calc(33.333% - 0.75rem);
+	min-width: 200px;
+	background-color: var(--mantine-color-dark-7);
+	border: 1px solid var(--mantine-color-dark-5);
+	transition: border-color 0.15s ease;
+}
+
+[data-mantine-color-scheme="light"] .featureCard {
+	background-color: var(--mantine-color-gray-0);
+	border: 1px solid var(--mantine-color-gray-3);
+}
+
+.featureCard:hover {
+	border-color: var(--mantine-color-dark-3);
+}
+
+[data-mantine-color-scheme="light"] .featureCard:hover {
+	border-color: var(--mantine-color-gray-5);
+}
+
+.featureIcon {
+	flex-shrink: 0;
+	width: 36px;
+	height: 36px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: var(--mantine-color-blue-9);
+	border-radius: var(--mantine-radius-sm);
+	color: var(--mantine-color-blue-3);
+}
+
+[data-mantine-color-scheme="light"] .featureIcon {
+	background-color: var(--mantine-color-blue-1);
+	color: var(--mantine-color-blue-7);
+}
+
+/* Focus states for accessibility */
+.searchInput:focus {
+	border-color: var(--mantine-color-blue-6);
+	outline: none;
+}
+
+/* Mobile adjustments */
+@media (max-width: 576px) {
+	.container {
+		padding: 0.5rem 0.75rem 2rem;
+	}
+
+	.title {
+		font-size: 2rem;
+	}
+
+	.subtitle {
+		font-size: 0.95rem;
+	}
+}
