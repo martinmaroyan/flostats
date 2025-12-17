@@ -67,6 +67,7 @@ export default function GeneralInfoDisplay({ info, setIgnoredTeams, reset, setRe
 					<Group gap="lg" justify="center">
 						{info.teams.map(team => (
 							<Paper p="sm" withBorder key={team.attributes.identityTeamId} onClick={() => {
+								if (true) return;
 								if (team.attributes.identityTeamId) {
 									if (ignored.has(team.attributes.identityTeamId)) {
 										ignored.delete(team.attributes.identityTeamId);
