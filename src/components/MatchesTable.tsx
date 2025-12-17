@@ -75,7 +75,7 @@ export default function MatchesTable({ bouts, identityPersonId }: AthleteDataPro
 					<Text fs={row.original.noOpponent ? "italic" : undefined} c={row.original.noOpponent ? "dimmed" : undefined}>
 						{renderedCellValue}
 					</Text> :
-					<Link to={`/athletes/${row.original.opponent?.attributes.identityPersonId}`} style={{ textDecoration: "none" }}>
+					<Link target="_blank" to={`/athletes/${row.original.opponent?.attributes.identityPersonId}`} style={{ textDecoration: "none" }}>
 						{renderedCellValue}
 					</Link>
 			),
