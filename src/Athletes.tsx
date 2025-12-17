@@ -92,6 +92,7 @@ export default function Athletes() {
 				if (team?.attributes.identityTeamId && filter.ignoredTeams.has(team?.attributes.identityTeamId)) return false;
 
 				total++;
+				console.log(bout.id);
 				return true;
 			}),
 			included: bouts.included,
@@ -269,8 +270,12 @@ export default function Athletes() {
 			(window as any)["bouts"] = boutsResponse;
 
 			if (boutsResponse && boutsResponse.data.length) {
-				const oldest = boutsResponse.data.map(bout => new Date(bout.attributes.endDateTime ?? bout.attributes.goDateTime ?? Date.now())).reduce((a, b) => a < b ? a : b);
-				const newest = boutsResponse.data.map(bout => new Date(bout.attributes.endDateTime ?? bout.attributes.goDateTime ?? Date.now())).reduce((a, b) => a > b ? a : b);
+				const oldest = boutsResponse.data.map(bout => {
+					return dayjs(bout.attributes.goDateTime ?? bout.attributes.endDateTime ?? FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", boutsResponse)?.attributes.startDateTime).toDate();
+				}).reduce((a, b) => a < b ? a : b);
+				const newest = boutsResponse.data.map(bout => {
+					return dayjs(bout.attributes.goDateTime ?? bout.attributes.endDateTime ?? FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", boutsResponse)?.attributes.startDateTime).toDate();
+				}).reduce((a, b) => a > b ? a : b);
 				setOldestBout(oldest);
 				setNewestBout(newest);
 

@@ -147,7 +147,7 @@ export default function MatchesTable({ bouts, identityPersonId }: AthleteDataPro
 		const event = FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", bouts);
 		const division = thisWrestler ? FloAPI.findIncludedObjectById<DivisionObject>(thisWrestler?.attributes.divisionId, "division", bouts) : undefined;
 		//if (!division) console.log("WTF no division found for wrestler", thisWrestler);
-
+		console.log(bout);
 		return {
 			date,
 			winner,
