@@ -91,9 +91,9 @@ export default function CompareAthletes() {
 					progressCoordinator.getCallback('athlete1-bouts'),
 					BoutsIncludeAll
 				),
-				FloAPI.fetchWrestlersByAthleteId<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>(
+				FloAPI.fetchAllWrestlers<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>(
 					id1,
-					{ pageSize: 0, pageOffset: 0, onProgress: progressCoordinator.getCallback('athlete1-wrestlers') },
+					progressCoordinator.getCallback('athlete1-wrestlers'),
 					WrestlersIncludeAll
 				),
 				FloAPI.fetchAllBouts<AllBoutRelationships, Exclude<FloObject, BoutObject>>(
@@ -101,9 +101,9 @@ export default function CompareAthletes() {
 					progressCoordinator.getCallback('athlete2-bouts'),
 					BoutsIncludeAll
 				),
-				FloAPI.fetchWrestlersByAthleteId<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>(
+				FloAPI.fetchAllWrestlers<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>(
 					id2,
-					{ pageSize: 0, pageOffset: 0, onProgress: progressCoordinator.getCallback('athlete2-wrestlers') },
+					progressCoordinator.getCallback('athlete2-wrestlers'),
 					WrestlersIncludeAll
 				),
 			]);

@@ -52,6 +52,65 @@ export default class FloAPI {
 		return this.fetchWithProgressTyped<WrestlerObject, R, I>(`https://floarena-api.flowrestling.org/wrestlers/?identityPersonId=${athleteId}&orderBy=eventEndDateTime&orderDirection=desc&page[size]=${config.pageSize}&page[offset]=${config.pageOffset}` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? ""), config.onProgress);
 	}
 
+	public static async fetchAllWrestlers<R extends RelationshipToWrestler | void, I extends Exclude<FloObject, WrestlerObject> | void>(athleteId: UUID, onProgress?: (progress: number) => void, include: readonly WrestlersIncludeString[] = ["bracketPlacements.weightClass", "division", "event", "weightClass", "team"], extra?: string): Promise<WrestlersResponse<R, I>> {
+		// Track the highest progress reported to ensure monotonic progress
+		let lastReportedProgress = 0;
+
+		// Helper to report progress only if it increases
+		const reportProgress = (progress: number) => {
+			if (onProgress && progress > lastReportedProgress) {
+				lastReportedProgress = progress;
+				onProgress(progress);
+			}
+		};
+
+		// Fetch the first 40 items
+		let totalData = await this.fetchWrestlersByAthleteId<R, I>(athleteId, { pageSize: 40, pageOffset: 0 }, include, extra);
+
+		// Get the total count from meta
+		const totalCount = totalData.meta?.total ?? totalData.data.length;
+
+		// Report initial progress
+		reportProgress((totalData.data.length / totalCount) * 100);
+
+		let currentLink = `https://floarena-api.flowrestling.org/wrestlers/?identityPersonId=${athleteId}&orderBy=eventEndDateTime&orderDirection=desc&page[size]=40&page[offset]=0` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? "");
+
+		// Keep fetching while there's a next link that's different from the current link
+		let nextLink = totalData.links?.next;
+		while (nextLink && nextLink !== currentLink) {
+			// Calculate progress for this page
+			const currentItemCount = totalData.data.length;
+			const baseProgress = (currentItemCount / totalCount) * 100;
+			const pageSize = 40; // Assumed page size
+			const progressPerPage = (pageSize / totalCount) * 100;
+
+			// Fetch with progress tracking for individual page download
+			const nextData = await this.fetchWithProgressTyped<WrestlerObject, R, I>(
+				nextLink,
+				(pageProgress) => {
+					// Combine base progress with current page's progress
+					const totalProgress = baseProgress + (pageProgress / 100) * progressPerPage;
+					reportProgress(Math.min(totalProgress, 100));
+				}
+			);
+
+			// Append the data to totalData
+			totalData.data = [...totalData.data, ...nextData.data];
+			if (nextData.included) {
+				totalData.included = [...totalData.included, ...nextData.included];
+			}
+
+			// Report progress based on cumulative data length after page completes
+			reportProgress((totalData.data.length / totalCount) * 100);
+
+			// Update the current link for next iteration
+			currentLink = nextLink;
+			nextLink = nextData.links?.next;
+		}
+
+		return totalData;
+	}
+
 	public static fetchBouts<R extends RelationshipToBout | void, I extends Exclude<FloObject, BoutObject> | void>(athleteId: UUID, config: FetchConfig, include: readonly BoutsIncludeString[] = ["bottomWrestler.team", "topWrestler.team", "weightClass", "topWrestler.division", "bottomWrestler.division", "event","roundName"], extra?: string): Promise<BoutsResponse<R, I>> {
 		return this.fetchWithProgressTyped<BoutObject, R, I>(`https://floarena-api.flowrestling.org/bouts/?identityPersonId=${athleteId}&page[size]=${config.pageSize}&page[offset]=${config.pageOffset}&hasResult=true` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? ""), config.onProgress);
 	}
