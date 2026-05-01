@@ -214,11 +214,7 @@ export default function Athletes() {
 			progressCoordinator.start();
 
 			// Fetch all wrestler instances for athlete ID
-			const wrestlersResponse = await FloAPI.fetchWrestlersByAthleteId<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>(identityPersonId, {
-				pageSize: 0,
-				pageOffset: 0,
-				onProgress: progressCoordinator.getCallback('wrestlers'),
-			}, WrestlersIncludeAll);
+			const wrestlersResponse = await FloAPI.fetchAllWrestlers<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>(identityPersonId, progressCoordinator.getCallback('wrestlers'), WrestlersIncludeAll);
 
 			wrestlersResponse.data.sort((a, b) => {
 				const aEvent = FloAPI.findIncludedObjectById<EventObject>(a.attributes.eventId, "event", wrestlersResponse);
