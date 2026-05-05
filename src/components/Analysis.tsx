@@ -7,7 +7,6 @@ import { AllBoutRelationships } from "../api/types/relationships";
 import { ObjectIdentifier } from "../api/types/types";
 import FloAPI from "../api/FloAPI";
 import { WrestlerObject } from "../api/types/objects/wrestler";
-import { IconChevronRight } from "@tabler/icons-react";
 
 type Ratio = [number, number];
 

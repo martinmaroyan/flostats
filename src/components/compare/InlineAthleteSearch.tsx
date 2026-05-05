@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
 	TextInput,
 	Popover,
@@ -20,12 +20,11 @@ type Props = {
 	value: string;
 	selectedId: string | null;
 	onQueryChange: (query: string) => void;
-	onAthleteSelect: (id: string, name: string) => void;
+	onAthleteSelect: (id: string | null, name: string) => void;
 	label: string;
 };
 
 export default function InlineAthleteSearch({
-	athleteNumber,
 	value,
 	selectedId,
 	onQueryChange,
@@ -35,7 +34,6 @@ export default function InlineAthleteSearch({
 	const [isSearching, setIsSearching] = useState(false);
 	const [searchResults, setSearchResults] = useState<SearchResultPerson[]>([]);
 	const [showResults, setShowResults] = useState(false);
-	const [searchType, setSearchType] = useState<"narrow" | "broad">("narrow");
 
 	// Debounce search query to avoid too many API calls
 	const [debouncedQuery] = useDebouncedValue(value, 500);
@@ -110,7 +108,7 @@ export default function InlineAthleteSearch({
 
 	const handleClear = () => {
 		onQueryChange("");
-		onAthleteSelect(null as any, "");
+		onAthleteSelect(null, "");
 		setSearchResults([]);
 		setShowResults(false);
 	};

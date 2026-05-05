@@ -36,7 +36,7 @@ export default function BoutDateFilter({ startDate, endDate, setStartDate, setEn
 				}
 				clearable
 				clearButtonProps={{ onClick: () => oldestBout ? setStartDate(oldestBout): {}, icon: <IconReload size={16} />  } as CloseButtonProps as never}
-				onChange={setStartDate}
+				onChange={value => setStartDate(value ? new Date(value) : null)}
 			/>
 			<DateInput
 				label="Filter End Date"
@@ -60,7 +60,7 @@ export default function BoutDateFilter({ startDate, endDate, setStartDate, setEn
 				}
 				clearable
 				clearButtonProps={{ onClick: () => newestBout ? setEndDate(newestBout): {}, icon: <IconReload size={16} />  } as CloseButtonProps as never}
-				onChange={setEndDate}
+				onChange={value => setEndDate(value ? new Date(value) : null)}
 			/>
 		</Group>
 	);

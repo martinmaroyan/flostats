@@ -8,7 +8,7 @@ export class ProgressCoordinator {
   private operations: Map<string, number> = new Map();
   private weights: Map<string, number> = new Map();
   private currentProgress: number = 0;
-  private updateTimeout: NodeJS.Timeout | null = null;
+  private updateTimeout: ReturnType<typeof setTimeout> | null = null;
   private debounceMs: number;
 
   constructor(debounceMs: number = 16) {

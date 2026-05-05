@@ -65,26 +65,18 @@ export default function GeneralInfoDisplay({ info, setIgnoredTeams, reset, setRe
 				<Stack gap="sm" justify="center">
 					<Text size="md" fw={600}>Teams Wrestled For: </Text>
 					<Group gap="lg" justify="center">
-						{info.teams.map(team => (
-							<Paper p="sm" withBorder key={team.attributes.identityTeamId} onClick={() => {
-								if (true) return;
-								if (team.attributes.identityTeamId) {
-									if (ignored.has(team.attributes.identityTeamId)) {
-										ignored.delete(team.attributes.identityTeamId);
-									} else {
-										ignored.add(team.attributes.identityTeamId);
-									}
-									//console.log("setting ignored");
-									setIgnored(new Set(ignored));
-								}
-							}} opacity={team.attributes.identityTeamId && ignored.has(team.attributes.identityTeamId) ? 0.5 : 1}>
-								<Stack gap={2}>
-									<Text size="md" fw="bold">{team.attributes.name}</Text>
-									<Text size="sm">{team.attributes.location.name}</Text>
-									<Text size="sm">{team.matches.length} matches</Text>
-								</Stack>
-							</Paper>
-						))}
+						{info.teams.map((team, index) => {
+							const teamId = team.attributes.identityTeamId ?? "";
+							return (
+								<Paper p="sm" withBorder key={teamId || index} opacity={teamId && ignored.has(teamId) ? 0.5 : 1}>
+									<Stack gap={2}>
+										<Text size="md" fw="bold">{team.attributes.name}</Text>
+										<Text size="sm">{team.attributes.location.name ?? "Unknown location"}</Text>
+										<Text size="sm">{team.matches.length} matches</Text>
+									</Stack>
+								</Paper>
+							);
+						})}
 					</Group>
 				</Stack>
 			</Stack>
