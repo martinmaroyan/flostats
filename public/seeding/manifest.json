@@ -1,0 +1,29 @@
+{
+  "indexes": [
+    {
+      "year": 2022,
+      "personCount": 931,
+      "builtAt": "2026-05-05T00:41:08Z"
+    },
+    {
+      "year": 2023,
+      "personCount": 891,
+      "builtAt": "2026-05-05T00:41:08Z"
+    },
+    {
+      "year": 2024,
+      "personCount": 1062,
+      "builtAt": "2026-05-05T00:41:08Z"
+    },
+    {
+      "year": 2025,
+      "personCount": 1081,
+      "builtAt": "2026-05-05T00:41:08Z"
+    },
+    {
+      "year": 2026,
+      "personCount": 1070,
+      "builtAt": "2026-05-05T00:41:08Z"
+    }
+  ]
+}
