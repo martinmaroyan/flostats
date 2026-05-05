@@ -5,16 +5,16 @@ import { MantineReactTable, MRT_ColumnDef, MRT_ExpandedState, useMantineReactTab
 import dayjs from "dayjs";
 
 import { CommonOpponentData } from "../../utils/commonOpponents";
-import { BoutsResponse } from "../../api/types/responses";
 import FloAPI from "../../api/FloAPI";
 import { EventObject } from "../../api/types/objects/event";
 import { WeightClassObject } from "../../api/types/objects/weightClass";
 import { DivisionObject } from "../../api/types/objects/division";
+import { AthleteBouts } from "../../utils/athleteData";
 
 type Props = {
 	commonOpponents: CommonOpponentData[];
-	athlete1Bouts: BoutsResponse<any, any>;
-	athlete2Bouts: BoutsResponse<any, any>;
+	athlete1Bouts: AthleteBouts;
+	athlete2Bouts: AthleteBouts;
 	athlete1Name: string;
 	athlete2Name: string;
 };

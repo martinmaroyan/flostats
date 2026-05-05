@@ -1,18 +1,17 @@
-import React from "react";
 import { Badge, Card, Group, Stack, Text, Title } from "@mantine/core";
 import { Link } from "react-router";
 import dayjs from "dayjs";
 
 import { HeadToHeadMatch } from "../../utils/commonOpponents";
-import { BoutsResponse } from "../../api/types/responses";
 import FloAPI from "../../api/FloAPI";
 import { EventObject } from "../../api/types/objects/event";
 import { WeightClassObject } from "../../api/types/objects/weightClass";
 import { DivisionObject } from "../../api/types/objects/division";
+import { AthleteBouts } from "../../utils/athleteData";
 
 type Props = {
 	h2hMatches: HeadToHeadMatch[];
-	athlete1Bouts: BoutsResponse<any, any>;
+	athlete1Bouts: AthleteBouts;
 	athlete1Name: string;
 	athlete2Name: string;
 };

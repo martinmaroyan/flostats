@@ -1,28 +1,31 @@
 import React from "react";
-import { Anchor, Checkbox, Group, Overlay, Stack } from "@mantine/core";
+import { Anchor, Badge, Center, Checkbox, Group, Stack, Tooltip } from "@mantine/core";
+import { IconLink } from "@tabler/icons-react";
+import AthleteLoadingPanel, { LoadCounters } from "./components/AthleteLoadingPanel";
 import { nprogress } from "@mantine/nprogress";
 import { Helmet } from "react-helmet-async";
 
 
 import { BoutsResponse, WrestlersResponse } from "./api/types/responses";
 import FloAPI from "./api/FloAPI";
-import { ProgressCoordinator } from "./utils/ProgressCoordinator";
 import { EventObject } from "./api/types/objects/event";
 import { WrestlerObject } from "./api/types/objects/wrestler";
-import { BoutsIncludeAll, FloObject, WrestlersIncludeAll } from "./api/types/types";
+import { FloObject } from "./api/types/types";
 import { BoutObject } from "./api/types/objects/bout";
 
 import { AllBoutRelationships, AllWrestlerRelationships } from "./api/types/relationships";
 import { useParams, Link } from "react-router";
 
 import dayjs from "dayjs";
-import { TeamAttributes, TeamObject } from "./api/types/objects/team";
+import { TeamObject } from "./api/types/objects/team";
 
 import BoutDateFilter from "./components/BoutDateFilter";
 import GeneralInfoDisplay, { BasicInfo } from "./components/GeneralInfoDisplay";
 
 import TimeframeSummary from "./components/TimeframeSummary";
 import SeedingCriteria from "./components/SeedingCriteria";
+import { getCanonicalId } from "./utils/aliases";
+import { fetchMergedAthleteData } from "./utils/athleteData";
 
 export type AthleteDataProps = {
 	wrestlers: WrestlersResponse<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>,
@@ -37,6 +40,13 @@ export default function Athletes() {
 	const { id } = useParams();
 
 	const [downloading, setDownloading] = React.useState<boolean>(false);
+	const [loadCounters, setLoadCounters] = React.useState<LoadCounters>({
+		wrestlersLoaded: 0,
+		wrestlersTotal: null,
+		boutsLoaded: 0,
+		boutsTotal: null,
+		overallProgress: null,
+	});
 
 	const [wrestlers, setWrestlers] = React.useState<Wrestlers | null>(null);
 	const [bouts, setBouts] = React.useState<Bouts | null>(null);
@@ -47,6 +57,7 @@ export default function Athletes() {
 	const [downloadingFor, setDownloadingFor] = React.useState<string | null>(null);
 
 	const [athleteId, setAthleteId] = React.useState<string | null>(null);
+	const [mergedAliases, setMergedAliases] = React.useState<string[]>([]);
 
 	const [startDate, setStartDate] = React.useState<Date | null>(null);
 	const [endDate, setEndDate] = React.useState<Date | null>(null);
@@ -62,10 +73,11 @@ export default function Athletes() {
 	});
 
 	React.useEffect(() => {
-		if (athleteId !== id && id && id != downloadingFor) {
-			if (wrestlers && wrestlers.data.find(w => w.attributes.identityPersonId == id)) return;
-			void downloadData(id);
-		}
+		if (!id) return;
+		const canonical = getCanonicalId(id);
+		if (athleteId === canonical) return;
+		if (downloadingFor === canonical) return;
+		void downloadData(id);
 	}, [id]);
 
 	const filteredBouts = React.useMemo(() => {
@@ -75,7 +87,7 @@ export default function Athletes() {
 		return bouts ? {
 			data: bouts.data.filter(bout => {
 				const date = dayjs(bout.attributes.goDateTime ?? bout.attributes.endDateTime ?? FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", bouts)?.attributes.startDateTime);
-				if (startDate && date.isBefore(dayjs(startDate))) { return false };
+				if (startDate && date.isBefore(dayjs(startDate))) return false;
 				if (endDate && date.isAfter(dayjs(endDate))) return false;
 				if (bout.attributes.winType == "NC") return false;
 				if (bout.attributes.winType == "BYE" && !filter.byes) return false;
@@ -87,20 +99,18 @@ export default function Athletes() {
 				const topWrestler = FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.topWrestlerId, "wrestler", bouts) as NonNullable<WrestlerObject>;
 				const bottomWrestler = FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.bottomWrestlerId, "wrestler", bouts) as NonNullable<WrestlerObject>;
 
-				const thisWrestler = topWrestler?.attributes.identityPersonId == id ? topWrestler : bottomWrestler;
+				const thisWrestler = topWrestler?.attributes.identityPersonId == athleteId ? topWrestler : bottomWrestler;
 
 				const team = FloAPI.findIncludedObjectById<TeamObject>(thisWrestler.attributes.teamId, "team", bouts);
 				if (team?.attributes.identityTeamId && filter.ignoredTeams.has(team?.attributes.identityTeamId)) return false;
-
 				total++;
-				console.log(bout.id);
 				return true;
 			}),
 			included: bouts.included,
 			meta: { total },
 			links: bouts.links,
 		} : null;
-	}, [bouts, startDate, endDate, filter, id]);
+	}, [bouts, startDate, endDate, filter, athleteId]);
 
 	const filteredWrestlers = React.useMemo(() => {
 		let total = 0;
@@ -198,70 +208,40 @@ export default function Athletes() {
 		return seasons;
 	}, [filteredBouts, filteredWrestlers]);
 
-	const downloadData = async (identityPersonId: string) => {
-		if (identityPersonId == athleteId || identityPersonId == downloadingFor) return;
-		//console.log(identityPersonId, athleteId, downloadingFor);
+	const downloadData = async (urlId: string) => {
+		const canonical = getCanonicalId(urlId);
 
-		setDownloadingFor(identityPersonId);
+		if (athleteId === canonical || downloadingFor === canonical) return;
+
+		setDownloadingFor(canonical);
 		setDownloading(true);
+		setWrestlers(null);
+		setBouts(null);
+		setBasicInfo(null);
+		setLoadCounters({ wrestlersLoaded: 0, wrestlersTotal: null, boutsLoaded: 0, boutsTotal: null, overallProgress: null });
 
 		try {
-			const start = performance.now();
-
-			// Create progress coordinator with two operations: wrestlers (50%) and bouts (50%)
-			const progressCoordinator = new ProgressCoordinator(16);
-			progressCoordinator.registerOperation('wrestlers', 0.5);
-			progressCoordinator.registerOperation('bouts', 0.5);
-			progressCoordinator.start();
-
-			// Fetch all wrestler instances for athlete ID
-			const wrestlersResponse = await FloAPI.fetchAllWrestlers<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>(identityPersonId, progressCoordinator.getCallback('wrestlers'), WrestlersIncludeAll);
-
-			wrestlersResponse.data.sort((a, b) => {
-				const aEvent = FloAPI.findIncludedObjectById<EventObject>(a.attributes.eventId, "event", wrestlersResponse);
-				const bEvent = FloAPI.findIncludedObjectById<EventObject>(b.attributes.eventId, "event", wrestlersResponse);
-
-				const aDate = aEvent?.attributes.endDateTime ?? aEvent?.attributes.startDateTime;
-				const bDate = bEvent?.attributes.endDateTime ?? bEvent?.attributes.startDateTime;
-
-				return dayjs(aDate).isBefore(dayjs(bDate)) ? 1 : dayjs(aDate).isAfter(dayjs(bDate)) ? -1 : 0;
-			});
+			nprogress.start();
+			const { aliases, canonicalId, wrestlers: wrestlersResponse, bouts: boutsResponse, basicInfo } = await fetchMergedAthleteData(
+				urlId,
+				progress => {
+					nprogress.set(progress);
+					setLoadCounters(current => ({ ...current, overallProgress: progress }));
+				},
+				(kind, loaded, total) => setLoadCounters(current => kind === "wrestlers"
+					? { ...current, wrestlersLoaded: loaded, wrestlersTotal: total }
+					: { ...current, boutsLoaded: loaded, boutsTotal: total }),
+			);
 
 			setWrestlers(wrestlersResponse);
-
-			// Fetch all bouts of athlete ID
-			const boutsResponse = await FloAPI.fetchAllBouts<AllBoutRelationships, Exclude<FloObject, BoutObject>>(identityPersonId, progressCoordinator.getCallback('bouts'), BoutsIncludeAll);
-
-			const teamIdentityIds = [...new Set(wrestlersResponse.data.map(w => FloAPI.findIncludedObjectById<TeamObject>(w.attributes.teamId, "team", wrestlersResponse)).map(t => t?.attributes.identityTeamId).filter(t => typeof t == "string"))];
-			const teamBasics = teamIdentityIds.map(t => wrestlersResponse.included.find(i => i.type == "team" && i.attributes.identityTeamId == t)?.attributes) as TeamAttributes[];
-
-			const basicInfo = {
-				name: wrestlersResponse.data.find(w => w.attributes.firstName) ? (wrestlersResponse.data.find(w => w.attributes.firstName)?.attributes.firstName + " " + wrestlersResponse.data.find(w => w.attributes.lastName)?.attributes.lastName) : undefined,
-				dateOfBirth: wrestlersResponse.data.find(w => w.attributes.dateOfBirth) ?  dayjs(wrestlersResponse.data.find(w => w.attributes.dateOfBirth)?.attributes.dateOfBirth) : undefined,
-				grade: wrestlersResponse.data.find(w => w.attributes.grade)?.attributes.grade,
-				teams: teamBasics.map(team => {
-					const identityId = team.identityTeamId;
-
-					return {
-						attributes: team,
-						matches: boutsResponse.data.filter(bout => {
-							const top = FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.topWrestlerId, "wrestler", boutsResponse);
-							const bottom = FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.bottomWrestlerId, "wrestler", boutsResponse);
-							const current = top?.attributes.identityPersonId == identityPersonId ? top : bottom;
-							if (!current) return false;
-							return FloAPI.findIncludedObjectById<TeamObject>(current.attributes.teamId, "team", boutsResponse)?.attributes.identityTeamId == identityId;
-						}),
-					};
-				}),
-			} as BasicInfo;
-
 			setBasicInfo(basicInfo);
+			setMergedAliases(aliases.length > 1 ? aliases : []);
 
 			document.title = `${basicInfo.name} - FloStats`;
 
 			setBouts(boutsResponse);
 
-			setAthleteId(identityPersonId);
+			setAthleteId(canonicalId);
 			setDownloading(false);
 
 			(window as any)["bouts"] = boutsResponse;
@@ -290,7 +270,7 @@ export default function Athletes() {
 				setEndDate(newest);
 			}
 
-			progressCoordinator.complete();
+			nprogress.complete();
 
 			//console.log(((performance.now() - start) / 1000).toFixed(2) + "s");
 		} catch (e) {
@@ -301,7 +281,7 @@ export default function Athletes() {
 
 	// Calculate stats for SEO meta description
 	const athleteStats = React.useMemo(() => {
-		if (!filteredBouts || !id) return null;
+		if (!filteredBouts || !athleteId) return null;
 
 		let wins = 0;
 		let losses = 0;
@@ -309,7 +289,7 @@ export default function Athletes() {
 
 		filteredBouts.data.forEach(bout => {
 			const winner = FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.winnerWrestlerId, "wrestler", filteredBouts);
-			const isWin = winner?.attributes.identityPersonId === id;
+			const isWin = winner?.attributes.identityPersonId === athleteId;
 
 			if (isWin) {
 				wins++;
@@ -323,7 +303,7 @@ export default function Athletes() {
 		const winPercentage = total > 0 ? ((wins / total) * 100).toFixed(1) : "0.0";
 
 		return { wins, losses, pins, winPercentage, total };
-	}, [filteredBouts, id]);
+	}, [filteredBouts, athleteId]);
 
 	return (
 		<Stack w="100%" align="center">
@@ -374,49 +354,57 @@ export default function Athletes() {
 					</script>
 				</Helmet>
 			)}
-			{downloading ? <Overlay backgroundOpacity={0} blur={2} h={"100%"} fixed={true} /> : null}
-			{basicInfo ? <GeneralInfoDisplay info={basicInfo} setIgnoredTeams={teams => setFilter({ ...filter, ignoredTeams: teams })} reset={false} setReset={() => {}} /> : null}
-			{athleteId && (
-				<Anchor
-					component={Link}
-					to={`/compare?athlete1=${athleteId}`}
-					size="md"
-				>
-					Compare with Another Wrestler
-				</Anchor>
+			{downloading ? (
+				<Center w="100%" mih="60vh">
+					<AthleteLoadingPanel counters={loadCounters} />
+				</Center>
+			) : (
+				<>
+					{mergedAliases.length > 1 ? <MergedProfilesBadge aliases={mergedAliases} canonical={athleteId} /> : null}
+				{basicInfo ? <GeneralInfoDisplay info={basicInfo} setIgnoredTeams={teams => setFilter({ ...filter, ignoredTeams: teams })} reset={false} setReset={() => {}} /> : null}
+					{athleteId && (
+						<Anchor
+							component={Link}
+							to={`/compare?athlete1=${athleteId}`}
+							size="md"
+						>
+							Compare with Another Wrestler
+						</Anchor>
+					)}
+					<BoutDateFilter startDate={startDate} setStartDate={setStartDate} endDate={endDate} setEndDate={setEndDate} oldestBout={oldestBout} newestBout={newestBout} />
+					<Stack gap="sm" mb="md" align="center">
+						<Group content="center">
+							<Checkbox checked={filter.eventType.duals} label="Duals" onChange={e => {
+								if (!e.target.checked) {
+									setFilter({ ...filter, eventType: { ...filter.eventType, duals: false, tournaments: true } });
+								} else {
+									setFilter({ ...filter, eventType: { ...filter.eventType, duals: true } });
+								}
+							}} />
+							<Checkbox checked={filter.eventType.tournaments} label="Tournaments" onChange={e => {
+								if (!e.target.checked) {
+									setFilter({ ...filter, eventType: { ...filter.eventType, tournaments: false, duals: true } });
+								} else {
+									setFilter({ ...filter, eventType: { ...filter.eventType, tournaments: true } });
+								}
+							}} />
+						</Group>
+						<Group>
+							<Checkbox checked={filter.byes} label="Byes" onChange={e => setFilter({ ...filter, byes: e.target.checked })} />
+							<Checkbox checked={filter.forfeits} label="Forfeits" onChange={e => setFilter({ ...filter, forfeits: e.target.checked })} />
+						</Group>
+					</Stack>
+					{filteredBouts && filteredWrestlers && athleteId ? (
+						<Stack w="100%">
+							<TimeframeSummary title="Total Summary" bouts={filteredBouts} wrestlers={filteredWrestlers} identityPersonId={athleteId} total />
+							{seasons.filter(season => season.bouts.meta.total > 0).map(season => (
+								<TimeframeSummary key={season.name} title={"Season: " + season.name} bouts={season.bouts} wrestlers={season.wrestlers} identityPersonId={athleteId} total={false} />
+							))}
+							<SeedingCriteria wrestlers={filteredWrestlers} bouts={filteredBouts} identityPersonId={athleteId} />
+						</Stack>
+					) : null}
+				</>
 			)}
-			<BoutDateFilter startDate={startDate} setStartDate={setStartDate} endDate={endDate} setEndDate={setEndDate} oldestBout={oldestBout} newestBout={newestBout} />
-			<Stack gap="sm" mb="md" align="center">
-				<Group content="center">
-					<Checkbox checked={filter.eventType.duals} label="Duals" onChange={e => {
-						if (!e.target.checked) {
-							setFilter({ ...filter, eventType: { ...filter.eventType, duals: false, tournaments: true } });
-						} else {
-							setFilter({ ...filter, eventType: { ...filter.eventType, duals: true } });
-						}
-					}} />
-					<Checkbox checked={filter.eventType.tournaments} label="Tournaments" onChange={e => {
-						if (!e.target.checked) {
-							setFilter({ ...filter, eventType: { ...filter.eventType, tournaments: false, duals: true } });
-						} else {
-							setFilter({ ...filter, eventType: { ...filter.eventType, tournaments: true } });
-						}
-					}} />
-				</Group>
-				<Group>
-					<Checkbox checked={filter.byes} label="Byes" onChange={e => setFilter({ ...filter, byes: e.target.checked })} />
-					<Checkbox checked={filter.forfeits} label="Forfeits" onChange={e => setFilter({ ...filter, forfeits: e.target.checked })} />
-				</Group>
-			</Stack>
-			{filteredBouts && filteredWrestlers && athleteId ? (
-				<Stack w="100%">
-					<TimeframeSummary title="Total Summary" bouts={filteredBouts} wrestlers={filteredWrestlers} identityPersonId={athleteId} total />
-					{seasons.filter(season => season.bouts.meta.total > 0).map(season => (
-						<TimeframeSummary key={season.name} title={"Season: " + season.name} bouts={season.bouts} wrestlers={season.wrestlers} identityPersonId={athleteId} total={false} />
-					))}
-					<SeedingCriteria wrestlers={filteredWrestlers} bouts={filteredBouts} identityPersonId={athleteId} />
-				</Stack>
-			) : null}
 			{/*wrestlers ? (
 				<Stack>
 					<Title order={2}>Weight Chart</Title>
@@ -424,5 +412,21 @@ export default function Athletes() {
 				</Stack>
 			) : null*/}
 		</Stack>
+	);
+}
+
+function MergedProfilesBadge({ aliases, canonical }: { aliases: string[]; canonical: string | null }) {
+	const others = aliases.filter(a => a !== canonical);
+	const label = `Merged from ${aliases.length} FloWrestling profiles`;
+	return (
+		<Tooltip
+			multiline
+			w={360}
+			label={`This view combines data from ${aliases.length} separate FloWrestling identityPersonIds${others.length ? ` (other ids: ${others.map(o => o.slice(0, 8)).join(", ")})` : ""}.`}
+		>
+			<Badge variant="light" color="blue" leftSection={<IconLink size={12} />} size="sm">
+				{label}
+			</Badge>
+		</Tooltip>
 	);
 }

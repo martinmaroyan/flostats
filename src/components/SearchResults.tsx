@@ -1,15 +1,15 @@
-import { nprogress } from "@mantine/nprogress";
 import React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import FloAPI, { SearchResultsTyped } from "../api/FloAPI";
 import { ProgressCoordinator } from "../utils/ProgressCoordinator";
 import { NodeResult, SearchResultPerson, SearchResultPersonUseOfp, SearchResults } from "../api/types/responses";
-import { Button, Card, Pagination, Skeleton, Stack, Text, Title } from "@mantine/core";
+import { Badge, Button, Card, Checkbox, Group, Pagination, Skeleton, Stack, Text, Title, Tooltip } from "@mantine/core";
 import dayjs from "dayjs";
 import { Helmet } from "react-helmet-async";
 
 import styles from "./SearchResults.module.css";
-import { IconArrowLeft } from "@tabler/icons-react";
+import { IconLink, IconLock, IconUnlink, IconUsers } from "@tabler/icons-react";
+import { AliasGroup, deleteGroup, getAliasGroup, getCanonicalId, isBuiltInGroup, mergeIds, useAliasGroups } from "../utils/aliases";
 
 const PAGE_SIZE = 10;
 
@@ -25,8 +25,16 @@ export default function SearchResultsPage() {
 
 	const [loading, setLoading] = React.useState<boolean>(false);
 
-	const [loadingExtra, setLoadingExtra] = React.useState<boolean>(false);
 	const [extraData, setExtraData] = React.useState<Map<number, NodeResult>>(new Map());
+
+	const aliasGroups = useAliasGroups();
+	const [mergeMode, setMergeMode] = React.useState<boolean>(false);
+	const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+	const toggleSelect = (id: string) => setSelectedIds(prev => {
+		const next = new Set(prev);
+		if (next.has(id)) next.delete(id); else next.add(id);
+		return next;
+	});
 
 	const navigate = useNavigate();
 
@@ -46,7 +54,7 @@ export default function SearchResultsPage() {
 		} else {
 			return `/athletes/${id}`;
 		}
-	}
+	};
 
 	React.useEffect(() => {
 		if (broadSearch && broadResults && searchParams.get("page") != broadResults?.meta.page.toString()) {
@@ -91,22 +99,21 @@ export default function SearchResultsPage() {
 
 	const searchFor = async <T extends boolean>(name: string, page: number = 1, useOfp: T) => {
 		if (page > 1000) page = 1000;
+		setExtraData(new Map());
 
 		// Create progress coordinator
 		const progressCoordinator = new ProgressCoordinator(16);
-		progressCoordinator.registerOperation('order-search', 0.5);
-		progressCoordinator.registerOperation('data-search', 0.5);
+		progressCoordinator.registerOperation("order-search", 0.5);
+		progressCoordinator.registerOperation("data-search", 0.5);
 		progressCoordinator.start();
 
 		setLoading(true);
-
-		if (useOfp) setLoadingExtra(true);
 
 		// Data fetched with OFP set to true is ordered correctly
 		const orderData = await FloAPI.searchByName(name, {
 			limit: PAGE_SIZE,
 			page,
-			onProgress: progressCoordinator.getCallback('order-search'),
+			onProgress: progressCoordinator.getCallback("order-search"),
 			useOfp: true,
 		});
 
@@ -116,27 +123,14 @@ export default function SearchResultsPage() {
 			data = await FloAPI.searchByName<T>(name, {
 				limit: PAGE_SIZE,
 				page,
-				onProgress: progressCoordinator.getCallback('data-search'),
+				onProgress: progressCoordinator.getCallback("data-search"),
 				useOfp,
 			});
 		} else {
 			// Mark the second operation as complete since we're not doing it
-			progressCoordinator.updateOperation('data-search', 100);
+			progressCoordinator.updateOperation("data-search", 100);
 			data = orderData as SearchResultsTyped<T>;
-			setLoadingExtra(true);
-			const extraData = new Map();
-			new Promise<void>(async resolve => {
-				//console.log("Loading extra data...", loadingExtra, data.data);
-				for (const result of data.data ?? []) {
-					const extra = await FloAPI.fetchFromNode(result.node.id);
-					extraData.set(result.node.id, extra);
-				}
-				resolve();
-			}).then(() => {
-				//console.log(`Loaded ${extraData.size} extra data`);
-				setExtraData(extraData);
-				setLoadingExtra(false);
-			});
+			void loadBroadResultDetails(orderData.data ?? []);
 		}
 
 		progressCoordinator.complete();
@@ -163,6 +157,15 @@ export default function SearchResultsPage() {
 		void FloAPI.fetchFromNode(result.node.id).then(data => {
 			void navigate(`/athletes/${data.data.arena_person_identity_id}`);
 		});
+	};
+
+	const loadBroadResultDetails = async (results: SearchResultPersonUseOfp[]) => {
+		const details = new Map<number, NodeResult>();
+		for (const result of results) {
+			const extra = await FloAPI.fetchFromNode(result.node.id);
+			details.set(result.node.id, extra);
+		}
+		setExtraData(details);
 	};
 
 	return (
@@ -196,6 +199,61 @@ export default function SearchResultsPage() {
 				</Helmet>
 			)}
 			<Title order={1}>{broadSearch ? "Broad" : "Narrow"} {loading ? "Search...": "Results"}</Title>
+
+			<Group gap="sm" justify="flex-end" wrap="wrap">
+				<Button
+					size="xs"
+					variant={mergeMode ? "filled" : "light"}
+					leftSection={<IconUsers size={14} />}
+					onClick={() => { setMergeMode(m => !m); setSelectedIds(new Set()); }}
+				>
+					{mergeMode ? "Done" : "Manage Merges"}
+				</Button>
+				{mergeMode && selectedIds.size >= 2 && (
+					<Button
+						size="xs"
+						leftSection={<IconLink size={14} />}
+						onClick={() => {
+							mergeIds([...selectedIds]);
+							setSelectedIds(new Set());
+						}}
+					>
+						Merge {selectedIds.size} selected
+					</Button>
+				)}
+			</Group>
+
+			{mergeMode && aliasGroups.length > 0 && (
+				<Card withBorder p="sm">
+					<Stack gap="xs">
+						<Text size="sm" fw={600}>Existing merge groups ({aliasGroups.length})</Text>
+						{aliasGroups.map(g => {
+							const builtIn = isBuiltInGroup(g);
+							return (
+								<Group key={g.join("|")} justify="space-between" wrap="nowrap">
+									<Text size="xs" style={{ fontFamily: "monospace" }}>{g.map(id => id.slice(0, 8)).join(" + ")}{builtIn ? " (built-in)" : ""}</Text>
+									{builtIn ? (
+										<Tooltip label="This merge is built in and always applied.">
+											<Badge size="xs" variant="light" color="gray" leftSection={<IconLock size={10} />}>locked</Badge>
+										</Tooltip>
+									) : (
+										<Button
+											size="compact-xs"
+											variant="subtle"
+											color="red"
+											leftSection={<IconUnlink size={14} />}
+											onClick={() => deleteGroup(g)}
+										>
+											Remove merge
+										</Button>
+									)}
+								</Group>
+							);
+						})}
+					</Stack>
+				</Card>
+			)}
+
 			{loading ? (
 				[...Array<string>(PAGE_SIZE)].map((_, i) => (
 					<Skeleton key={i} style={{ marginBottom: "1rem" }} />
@@ -203,18 +261,37 @@ export default function SearchResultsPage() {
 			) : ((narrowResults && narrowResults.data && !broadSearch) ? (
 				<Stack align="stretch" gap="xl" mb="xl">
 					<Stack>
-						{narrowResults.data.map((result) => (
-							<Card key={result.id} styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }} p="lg" className={styles.result} mx="xs">
-								<Link to={getRedirectLink(result.arena_person_identity_id)} style={{ textDecoration: "none" }} className={styles.resultLink}>
-									<Title order={3}>{result.name}</Title><Text size="xs" c="dimmed">ID: {result.arena_person_identity_id}</Text>
-									{result.location ?
-										<Text><Text span fw={600}>Location:</Text> {result.location.name} ({[result.location.city, result.location.state].filter(v => v).join(", ")})</Text>
-										: <Text c="dimmed">No location data</Text>}
-									<Text><Text span fw={600}>HS Graduation:</Text> {result.high_school_grad_year}</Text>
-									{result.birth_date ? <Text><Text span fw={600}>Birthday:</Text> {dayjs(result.birth_date).format("MMMM D, YYYY")}</Text> : <Text c="dimmed">Birth date unavailable</Text>}
-								</Link>
-							</Card>
-						))}
+						{dedupByCanonical(narrowResults.data, r => r.arena_person_identity_id).map(({ item: result, group }) => {
+							const canonical = getCanonicalId(result.arena_person_identity_id);
+							return (
+								<Card key={result.id} styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }} p="lg" className={styles.result} mx="xs">
+									<Group align="flex-start" wrap="nowrap" gap="sm">
+										{mergeMode && (
+											<Checkbox
+												checked={selectedIds.has(canonical)}
+												onChange={() => toggleSelect(canonical)}
+												onClick={e => e.stopPropagation()}
+											/>
+										)}
+										<Stack gap={2} style={{ flex: 1 }}>
+											<Link to={getRedirectLink(canonical)} style={{ textDecoration: "none" }} className={styles.resultLink}>
+												<Group gap={6} wrap="wrap" align="center">
+													<Title order={3}>{result.name}</Title>
+													{group && <MergedBadge group={group} />}
+												</Group>
+												<Text size="xs" c="dimmed">ID: {canonical}</Text>
+												{result.location ?
+													<Text><Text span fw={600}>Location:</Text> {result.location.name} ({[result.location.city, result.location.state].filter(v => v).join(", ")})</Text>
+													: <Text c="dimmed">No location data</Text>}
+												<Text><Text span fw={600}>HS Graduation:</Text> {result.high_school_grad_year}</Text>
+												{result.birth_date ? <Text><Text span fw={600}>Birthday:</Text> {dayjs(result.birth_date).format("MMMM D, YYYY")}</Text> : <Text c="dimmed">Birth date unavailable</Text>}
+											</Link>
+											{mergeMode && group && !isBuiltInGroup(group) ? <RemoveMergeButton group={group} /> : null}
+										</Stack>
+									</Group>
+								</Card>
+							);
+						})}
 					</Stack>
 					<Pagination
 						total={Math.min(narrowResults.meta.max_limit, narrowResults.meta.pages)} value={narrowResults.meta.page} withEdges withControls onChange={switchPage}
@@ -225,18 +302,37 @@ export default function SearchResultsPage() {
 			) : (broadResults && broadResults.data && broadSearch) ? (
 				<Stack align="stretch" gap="xl" mb="xl">
 					<Stack>
-						{extraData.size ? Array.from(extraData.values()).map((extra) => (
-							<Card key={extra.data.original_entity.id} styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }} p="lg" className={styles.result} mx="xs">
-								<Link to={getRedirectLink(extra.data.original_entity.arena_person_identity_id)} style={{ textDecoration: "none" }} className={styles.resultLink}>
-									<Title order={3}>{extra.data.original_entity.name}</Title><Text size="xs" c="dimmed">ID: {extra.data.original_entity.arena_person_identity_id}</Text>
-									{extra.data.original_entity.location ?
-										<Text><Text span fw={600}>Location:</Text> {extra.data.original_entity.location.name} ({[extra.data.original_entity.location.city, extra.data.original_entity.location.state].filter(v => v).join(", ")})</Text>
-										: <Text c="dimmed">No location data</Text>}
-									<Text><Text span fw={600}>HS Graduation:</Text> {extra.data.original_entity.high_school_grad_year}</Text>
-									{extra.data.original_entity.birth_date ? <Text><Text span fw={600}>Birthday:</Text> {dayjs(extra.data.original_entity.birth_date).format("MMMM D, YYYY")}</Text> : <Text c="dimmed">Birth date unavailable</Text>}
-								</Link>
-							</Card>
-						)) : broadResults.data.map((result) => (
+						{extraData.size ? dedupByCanonical(Array.from(extraData.values()), e => e.data.original_entity.arena_person_identity_id).map(({ item: extra, group }) => {
+							const canonical = getCanonicalId(extra.data.original_entity.arena_person_identity_id);
+							return (
+								<Card key={extra.data.original_entity.id} styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }} p="lg" className={styles.result} mx="xs">
+									<Group align="flex-start" wrap="nowrap" gap="sm">
+										{mergeMode && (
+											<Checkbox
+												checked={selectedIds.has(canonical)}
+												onChange={() => toggleSelect(canonical)}
+												onClick={e => e.stopPropagation()}
+											/>
+										)}
+										<Stack gap={2} style={{ flex: 1 }}>
+											<Link to={getRedirectLink(canonical)} style={{ textDecoration: "none" }} className={styles.resultLink}>
+												<Group gap={6} wrap="wrap" align="center">
+													<Title order={3}>{extra.data.original_entity.name}</Title>
+													{group && <MergedBadge group={group} />}
+												</Group>
+												<Text size="xs" c="dimmed">ID: {canonical}</Text>
+												{extra.data.original_entity.location ?
+													<Text><Text span fw={600}>Location:</Text> {extra.data.original_entity.location.name} ({[extra.data.original_entity.location.city, extra.data.original_entity.location.state].filter(v => v).join(", ")})</Text>
+													: <Text c="dimmed">No location data</Text>}
+												<Text><Text span fw={600}>HS Graduation:</Text> {extra.data.original_entity.high_school_grad_year}</Text>
+												{extra.data.original_entity.birth_date ? <Text><Text span fw={600}>Birthday:</Text> {dayjs(extra.data.original_entity.birth_date).format("MMMM D, YYYY")}</Text> : <Text c="dimmed">Birth date unavailable</Text>}
+											</Link>
+											{mergeMode && group && !isBuiltInGroup(group) ? <RemoveMergeButton group={group} /> : null}
+										</Stack>
+									</Group>
+								</Card>
+							);
+						}) : broadResults.data.map((result) => (
 							<Card key={result.id} styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }} p="lg" className={styles.result} mx="xs" onClick={() => !extraData.get(result.node.id) ? broadResultsClick(result) : null}>
 								<Title order={3}>{result.title}</Title><Text size="xs" c="dimmed">ID: {result.node.id} ({result.id})</Text>
 								<Text>Loading...</Text>
@@ -253,5 +349,47 @@ export default function SearchResultsPage() {
 				<p>No results found</p>
 			))}
 		</Stack>
+	);
+}
+
+/** De-dupe results that fall into the same merge group, keeping first occurrence.
+ *  Returns each kept item annotated with its group (if part of one). */
+function dedupByCanonical<T>(items: T[], getId: (item: T) => string): { item: T; group: AliasGroup | null }[] {
+	const seenCanonical = new Set<string>();
+	const out: { item: T; group: AliasGroup | null }[] = [];
+	for (const item of items) {
+		const id = getId(item);
+		const canonical = getCanonicalId(id);
+		if (seenCanonical.has(canonical)) continue;
+		seenCanonical.add(canonical);
+		out.push({ item, group: getAliasGroup(id) });
+	}
+	return out;
+}
+
+function MergedBadge({ group }: { group: AliasGroup }) {
+	return (
+		<Tooltip label={`Merged from ${group.length} profiles: ${group.map(id => id.slice(0, 8)).join(", ")}`}>
+			<Badge size="xs" variant="light" color="blue" leftSection={<IconLink size={10} />}>merged</Badge>
+		</Tooltip>
+	);
+}
+
+function RemoveMergeButton({ group }: { group: AliasGroup }) {
+	return (
+		<Button
+			size="compact-xs"
+			variant="light"
+			color="red"
+			leftSection={<IconUnlink size={14} />}
+			w="fit-content"
+			onClick={event => {
+				event.preventDefault();
+				event.stopPropagation();
+				deleteGroup(group);
+			}}
+		>
+			Remove merge
+		</Button>
 	);
 }

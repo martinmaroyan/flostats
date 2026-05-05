@@ -52,62 +52,31 @@ export default class FloAPI {
 		return this.fetchWithProgressTyped<WrestlerObject, R, I>(`https://floarena-api.flowrestling.org/wrestlers/?identityPersonId=${athleteId}&orderBy=eventEndDateTime&orderDirection=desc&page[size]=${config.pageSize}&page[offset]=${config.pageOffset}` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? ""), config.onProgress);
 	}
 
-	public static async fetchAllWrestlers<R extends RelationshipToWrestler | void, I extends Exclude<FloObject, WrestlerObject> | void>(athleteId: UUID, onProgress?: (progress: number) => void, include: readonly WrestlersIncludeString[] = ["bracketPlacements.weightClass", "division", "event", "weightClass", "team"], extra?: string): Promise<WrestlersResponse<R, I>> {
-		// Track the highest progress reported to ensure monotonic progress
-		let lastReportedProgress = 0;
+	public static async fetchAllWrestlers<R extends RelationshipToWrestler | void, I extends Exclude<FloObject, WrestlerObject> | void>(athleteId: UUID, onProgress?: (progress: number) => void, include: readonly WrestlersIncludeString[] = ["bracketPlacements.weightClass", "division", "event", "weightClass", "team"], extra?: string, onCount?: (loaded: number, total: number) => void): Promise<WrestlersResponse<R, I>> {
+		const totalData = await this.fetchWrestlersByAthleteId<R, I>(athleteId, { pageSize: 40, pageOffset: 0 }, include, extra);
+		const totalCount = Math.max(totalData.meta?.total ?? totalData.data.length, totalData.data.length);
 
-		// Helper to report progress only if it increases
-		const reportProgress = (progress: number) => {
-			if (onProgress && progress > lastReportedProgress) {
-				lastReportedProgress = progress;
-				onProgress(progress);
-			}
-		};
-
-		// Fetch the first 40 items
-		let totalData = await this.fetchWrestlersByAthleteId<R, I>(athleteId, { pageSize: 40, pageOffset: 0 }, include, extra);
-
-		// Get the total count from meta
-		const totalCount = totalData.meta?.total ?? totalData.data.length;
-
-		// Report initial progress
-		reportProgress((totalData.data.length / totalCount) * 100);
+		onCount?.(totalData.data.length, totalCount);
+		onProgress?.(totalCount > 0 ? (totalData.data.length / totalCount) * 100 : 100);
 
 		let currentLink = `https://floarena-api.flowrestling.org/wrestlers/?identityPersonId=${athleteId}&orderBy=eventEndDateTime&orderDirection=desc&page[size]=40&page[offset]=0` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? "");
-
-		// Keep fetching while there's a next link that's different from the current link
 		let nextLink = totalData.links?.next;
+
 		while (nextLink && nextLink !== currentLink) {
-			// Calculate progress for this page
-			const currentItemCount = totalData.data.length;
-			const baseProgress = (currentItemCount / totalCount) * 100;
-			const pageSize = 40; // Assumed page size
-			const progressPerPage = (pageSize / totalCount) * 100;
-
-			// Fetch with progress tracking for individual page download
-			const nextData = await this.fetchWithProgressTyped<WrestlerObject, R, I>(
-				nextLink,
-				(pageProgress) => {
-					// Combine base progress with current page's progress
-					const totalProgress = baseProgress + (pageProgress / 100) * progressPerPage;
-					reportProgress(Math.min(totalProgress, 100));
-				}
-			);
-
-			// Append the data to totalData
+			const nextData = await this.fetchWithProgressTyped<WrestlerObject, R, I>(nextLink);
 			totalData.data = [...totalData.data, ...nextData.data];
-			if (nextData.included) {
-				totalData.included = [...totalData.included, ...nextData.included];
-			}
+			if (nextData.included) totalData.included = [...totalData.included, ...nextData.included];
 
-			// Report progress based on cumulative data length after page completes
-			reportProgress((totalData.data.length / totalCount) * 100);
+			onCount?.(totalData.data.length, Math.max(totalCount, totalData.data.length));
+			onProgress?.(Math.min(100, (totalData.data.length / Math.max(totalCount, totalData.data.length)) * 100));
 
-			// Update the current link for next iteration
 			currentLink = nextLink;
 			nextLink = nextData.links?.next;
 		}
 
+		// Final flush in case meta.total under-counted.
+		onCount?.(totalData.data.length, totalData.data.length);
+		onProgress?.(100);
 		return totalData;
 	}
 
@@ -115,61 +84,31 @@ export default class FloAPI {
 		return this.fetchWithProgressTyped<BoutObject, R, I>(`https://floarena-api.flowrestling.org/bouts/?identityPersonId=${athleteId}&page[size]=${config.pageSize}&page[offset]=${config.pageOffset}&hasResult=true` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? ""), config.onProgress);
 	}
 
-	public static async fetchAllBouts<R extends RelationshipToBout | void, I extends Exclude<FloObject, BoutObject> | void>(athleteId: UUID, onProgress?: (progress: number) => void, include: readonly BoutsIncludeString[] = ["bottomWrestler.team", "topWrestler.team", "weightClass", "topWrestler.division", "bottomWrestler.division", "event","roundName"], extra?: string): Promise<BoutsResponse<R, I>> {
-		// Track the highest progress reported to ensure monotonic progress
-		let lastReportedProgress = 0;
+	public static async fetchAllBouts<R extends RelationshipToBout | void, I extends Exclude<FloObject, BoutObject> | void>(athleteId: UUID, onProgress?: (progress: number) => void, include: readonly BoutsIncludeString[] = ["bottomWrestler.team", "topWrestler.team", "weightClass", "topWrestler.division", "bottomWrestler.division", "event","roundName"], extra?: string, onCount?: (loaded: number, total: number) => void): Promise<BoutsResponse<R, I>> {
+		const totalData = await this.fetchBouts<R, I>(athleteId, { pageSize: 40, pageOffset: 0 }, include, extra);
+		const totalCount = Math.max(totalData.meta?.total ?? totalData.data.length, totalData.data.length);
 
-		// Helper to report progress only if it increases
-		const reportProgress = (progress: number) => {
-			if (onProgress && progress > lastReportedProgress) {
-				lastReportedProgress = progress;
-				onProgress(progress);
-			}
-		};
-
-		// Fetch the first 40 items
-		let totalData = await this.fetchBouts<R, I>(athleteId, { pageSize: 40, pageOffset: 0 }, include, extra);
-
-		// Get the total count from meta
-		const totalCount = totalData.meta?.total ?? totalData.data.length;
-
-		// Report initial progress
-		reportProgress((totalData.data.length / totalCount) * 100);
+		onCount?.(totalData.data.length, totalCount);
+		onProgress?.(totalCount > 0 ? (totalData.data.length / totalCount) * 100 : 100);
 
 		let currentLink = `https://floarena-api.flowrestling.org/bouts/?identityPersonId=${athleteId}&page[size]=40&page[offset]=0&hasResult=true` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? "");
 
-		// Keep fetching while there's a next link that's different from the current link
-		while (totalData.links.next && totalData.links.next !== currentLink) {
-			// Calculate progress for this page
-			const currentItemCount = totalData.data.length;
-			const baseProgress = (currentItemCount / totalCount) * 100;
-			const pageSize = 40; // Assumed page size
-			const progressPerPage = (pageSize / totalCount) * 100;
+		let nextLink = totalData.links?.next;
+		while (nextLink && nextLink !== currentLink) {
+			const nextData = await this.fetchWithProgressTyped<BoutObject, R, I>(nextLink);
 
-			// Fetch with progress tracking for individual page download
-			const nextData = await this.fetchWithProgressTyped<BoutObject, R, I>(
-				totalData.links.next,
-				(pageProgress) => {
-					// Combine base progress with current page's progress
-					const totalProgress = baseProgress + (pageProgress / 100) * progressPerPage;
-					reportProgress(Math.min(totalProgress, 100));
-				}
-			);
-
-			// Append the data to totalData
 			totalData.data = [...totalData.data, ...nextData.data];
-			if (nextData.included) {
-				totalData.included = [...totalData.included, ...nextData.included];
-			}
+			if (nextData.included) totalData.included = [...totalData.included, ...nextData.included];
 
-			// Report progress based on cumulative data length after page completes
-			reportProgress((totalData.data.length / totalCount) * 100);
+			onCount?.(totalData.data.length, Math.max(totalCount, totalData.data.length));
+			onProgress?.(Math.min(100, (totalData.data.length / Math.max(totalCount, totalData.data.length)) * 100));
 
-			// Update the current link for next iteration
-			currentLink = totalData.links.next;
-			totalData.links.next = nextData.links.next;
+			currentLink = nextLink;
+			nextLink = nextData.links?.next;
 		}
 
+		onCount?.(totalData.data.length, totalData.data.length);
+		onProgress?.(100);
 		return totalData;
 	}
 

@@ -1,4 +1,3 @@
-import React from "react";
 import { Card, Flex, Group, Stack, Text, Title } from "@mantine/core";
 import { CommonOpponentsSummary } from "../../utils/commonOpponents";
 
@@ -12,8 +11,6 @@ export default function ComparisonSummary({ summary, athlete1Name, athlete2Name 
 	// Determine which athlete has the advantage
 	const athlete1HasAdvantage = summary.athlete1WinPercentage > summary.athlete2WinPercentage;
 	const athlete2HasAdvantage = summary.athlete2WinPercentage > summary.athlete1WinPercentage;
-	const isTied = summary.athlete1WinPercentage === summary.athlete2WinPercentage;
-
 	return (
 		<Card w="100%" p="lg" bg="var(--mantine-color-body)" bd="1px solid var(--mantine-color-gray-7)">
 			<Stack gap="lg">

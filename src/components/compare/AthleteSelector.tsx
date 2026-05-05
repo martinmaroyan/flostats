@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Button, Card, Group, Stack, Text, Title } from "@mantine/core";
 import InlineAthleteSearch from "./InlineAthleteSearch";

@@ -1,8 +1,8 @@
-import { BoutsResponse } from "../api/types/responses";
 import { BoutObject } from "../api/types/objects/bout";
 import { WrestlerObject } from "../api/types/objects/wrestler";
 import { UUID } from "../api/types/types";
 import FloAPI from "../api/FloAPI";
+import { AthleteBouts } from "./athleteData";
 
 export type CommonOpponentData = {
 	opponentId: UUID;
@@ -26,7 +26,7 @@ export type BoutWithMetadata = {
  * Extracts all opponent identityPersonIds from an athlete's bouts
  */
 function extractOpponentIds(
-	boutsResponse: BoutsResponse<any, any>,
+	boutsResponse: AthleteBouts,
 	athleteId: UUID
 ): Set<UUID> {
 	const opponentIds = new Set<UUID>();
@@ -60,7 +60,7 @@ function extractOpponentIds(
  * Gets bouts against a specific opponent
  */
 function getBoutsAgainstOpponent(
-	boutsResponse: BoutsResponse<any, any>,
+	boutsResponse: AthleteBouts,
 	athleteId: UUID,
 	opponentId: UUID
 ): BoutWithMetadata[] {
@@ -108,8 +108,8 @@ function getBoutsAgainstOpponent(
  * Finds all common opponents between two athletes and returns detailed comparison data
  */
 export function findCommonOpponents(
-	athlete1Bouts: BoutsResponse<any, any>,
-	athlete2Bouts: BoutsResponse<any, any>,
+	athlete1Bouts: AthleteBouts,
+	athlete2Bouts: AthleteBouts,
 	athlete1Id: UUID,
 	athlete2Id: UUID
 ): CommonOpponentData[] {
@@ -219,8 +219,7 @@ export type HeadToHeadMatch = {
 };
 
 export function findHeadToHeadMatches(
-	athlete1Bouts: BoutsResponse<any, any>,
-	athlete2Bouts: BoutsResponse<any, any>,
+	athlete1Bouts: AthleteBouts,
 	athlete1Id: UUID,
 	athlete2Id: UUID
 ): HeadToHeadMatch[] {
