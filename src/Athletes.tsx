@@ -22,6 +22,7 @@ import BoutDateFilter from "./components/BoutDateFilter";
 import GeneralInfoDisplay, { BasicInfo } from "./components/GeneralInfoDisplay";
 
 import TimeframeSummary from "./components/TimeframeSummary";
+import SeedingCriteria from "./components/SeedingCriteria";
 
 export type AthleteDataProps = {
 	wrestlers: WrestlersResponse<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>,
@@ -265,20 +266,28 @@ export default function Athletes() {
 
 			(window as any)["bouts"] = boutsResponse;
 
-			if (boutsResponse && boutsResponse.data.length) {
-				const oldest = boutsResponse.data.map(bout => {
-					return dayjs(bout.attributes.goDateTime ?? bout.attributes.endDateTime ?? FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", boutsResponse)?.attributes.startDateTime).toDate();
-				}).reduce((a, b) => a < b ? a : b);
-				const newest = boutsResponse.data.map(bout => {
-					return dayjs(bout.attributes.goDateTime ?? bout.attributes.endDateTime ?? FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", boutsResponse)?.attributes.startDateTime).toDate();
-				}).reduce((a, b) => a > b ? a : b);
+			const boundDates: Date[] = [];
+			for (const bout of boutsResponse.data) {
+				const event = FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", boutsResponse);
+				for (const d of [bout.attributes.goDateTime, bout.attributes.endDateTime, event?.attributes.startDateTime, event?.attributes.endDateTime]) {
+					if (d) boundDates.push(dayjs(d).toDate());
+				}
+			}
+			for (const wrestler of wrestlersResponse.data) {
+				const event = FloAPI.findIncludedObjectById<EventObject>(wrestler.attributes.eventId, "event", wrestlersResponse);
+				for (const d of [event?.attributes.startDateTime, event?.attributes.endDateTime]) {
+					if (d) boundDates.push(dayjs(d).toDate());
+				}
+			}
+
+			if (boundDates.length) {
+				const oldest = boundDates.reduce((a, b) => a < b ? a : b);
+				const newest = boundDates.reduce((a, b) => a > b ? a : b);
 				setOldestBout(oldest);
 				setNewestBout(newest);
 
 				setStartDate(oldest);
 				setEndDate(newest);
-
-				//console.log(`Oldest bout: ${oldest}, Newest bout: ${newest}`);
 			}
 
 			progressCoordinator.complete();
@@ -405,6 +414,7 @@ export default function Athletes() {
 					{seasons.filter(season => season.bouts.meta.total > 0).map(season => (
 						<TimeframeSummary key={season.name} title={"Season: " + season.name} bouts={season.bouts} wrestlers={season.wrestlers} identityPersonId={athleteId} total={false} />
 					))}
+					<SeedingCriteria wrestlers={filteredWrestlers} bouts={filteredBouts} identityPersonId={athleteId} />
 				</Stack>
 			) : null}
 			{/*wrestlers ? (
