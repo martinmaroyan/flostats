@@ -13,7 +13,7 @@ import {
 import { useDebouncedValue } from "@mantine/hooks";
 import FloAPI from "../../api/FloAPI";
 import { SearchResultPerson } from "../../api/types/responses";
-import { ID_REGEX } from "../../main";
+import { ID_REGEX } from "../../utils/identity";
 
 type Props = {
 	athleteNumber: 1 | 2;
@@ -40,6 +40,8 @@ export default function InlineAthleteSearch({
 
 	// Auto-search when debounced query changes
 	useEffect(() => {
+		let cancelled = false;
+		setIsSearching(false);
 		if (!debouncedQuery || debouncedQuery.length < 2) {
 			setSearchResults([]);
 			setShowResults(false);
@@ -59,29 +61,28 @@ export default function InlineAthleteSearch({
 		}
 
 		// Execute search
-		executeSearch(debouncedQuery);
+		void (async () => {
+			setIsSearching(true);
+			setShowResults(true);
+
+			try {
+				const results = await FloAPI.searchByName(debouncedQuery, {
+					limit: 10,
+					page: 1,
+					onProgress: () => {},
+					useOfp: false, // Always use narrow for inline search (immediate data)
+				});
+
+				if (!cancelled) setSearchResults(results.data || []);
+			} catch (error) {
+				console.error("Search failed:", error);
+				if (!cancelled) setSearchResults([]);
+			} finally {
+				if (!cancelled) setIsSearching(false);
+			}
+		})();
+		return () => { cancelled = true; };
 	}, [debouncedQuery, selectedId]);
-
-	const executeSearch = async (query: string) => {
-		setIsSearching(true);
-		setShowResults(true);
-
-		try {
-			const results = await FloAPI.searchByName(query, {
-				limit: 10,
-				page: 1,
-				onProgress: () => {},
-				useOfp: false, // Always use narrow for inline search (immediate data)
-			});
-
-			setSearchResults(results.data || []);
-		} catch (error) {
-			console.error("Search failed:", error);
-			setSearchResults([]);
-		} finally {
-			setIsSearching(false);
-		}
-	};
 
 	const handleResultClick = (result: SearchResultPerson) => {
 		onAthleteSelect(result.arena_person_identity_id, result.name);
@@ -134,10 +135,10 @@ export default function InlineAthleteSearch({
 							selectedId
 								? "✓ Wrestler selected"
 								: ID_REGEX.test(value)
-								? "UUID detected"
-								: value.length >= 2
-								? "Searching..."
-								: "Enter at least 2 characters"
+									? "UUID detected"
+									: value.length >= 2
+										? "Searching..."
+										: "Enter at least 2 characters"
 						}
 						rightSection={isSearching ? <Loader size="xs" /> : null}
 					/>

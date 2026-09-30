@@ -146,6 +146,12 @@ def main():
 		print(f"{os.path.basename(src)} -> {out}  ({idx['personCount']} people)", file=sys.stderr)
 		manifest.append({"year": idx["year"], "personCount": idx["personCount"], "builtAt": idx["builtAt"]})
 
+	# Discover all published indexes, including years not rebuilt by --year.
+	manifest = []
+	for path in sorted(glob.glob(os.path.join(OUT_DIR, "[0-9][0-9][0-9][0-9].json"))):
+		with open(path, encoding="utf-8") as f:
+			idx = json.load(f)
+		manifest.append({"year": idx["year"], "personCount": idx["personCount"], "builtAt": idx["builtAt"]})
 	# Manifest so the SPA can discover available years without a directory listing.
 	manifest.sort(key=lambda m: m["year"])
 	with open(os.path.join(OUT_DIR, "manifest.json"), "w", encoding="utf-8") as f:

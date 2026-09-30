@@ -28,3 +28,7 @@ dist-ssr
 .next
 
 .VSCodeCounter
+
+test-results/
+playwright-report/
+__pycache__/

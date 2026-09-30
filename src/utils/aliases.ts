@@ -148,11 +148,11 @@ let snapshotKey = "";
 function getSnapshot(): AliasGroup[] {
 	const groups = getAllGroups();
 	const key = groups.map(g => g.join("|")).join(";");
-	if (key !== snapshotKey) {
+	if (!snapshotCache || key !== snapshotKey) {
 		snapshotKey = key;
 		snapshotCache = groups;
 	}
-	return snapshotCache!;
+	return snapshotCache;
 }
 
 /** React hook returning the current list of merged groups. Re-renders on changes. */

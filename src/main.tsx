@@ -1,26 +1,17 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import Athletes from "./Athletes.tsx";
-import { BrowserRouter, Route, Routes } from "react-router";
 import { createTheme, CSSVariablesResolver, MantineProvider } from "@mantine/core";
 import { NavigationProgress } from "@mantine/nprogress";
 import { HelmetProvider } from "react-helmet-async";
 
-import Layout from "./components/Layout.tsx";
+import App from "./App";
 
 import "./index.css";
 import "@mantine/core/styles.css";
 import "@mantine/charts/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/nprogress/styles.css";
-import "@mantine/carousel/styles.css";
 import "mantine-react-table/styles.css";
-
-import SearchResultsPage from "./components/SearchResults.tsx";
-import CompareAthletes from "./components/compare/CompareAthletes.tsx";
-import HomePage from "./components/HomePage.tsx";
-
-export const ID_REGEX = new RegExp("[0-9(a-f|A-F)]{8}-[0-9(a-f|A-F)]{4}-4[0-9(a-f|A-F)]{3}-[89ab][0-9(a-f|A-F)]{3}-[0-9(a-f|A-F)]{12}"); // UUID v4
 
 const root = document.getElementById("root");
 
@@ -56,17 +47,7 @@ ReactDOM.createRoot(root!).render(
 		<HelmetProvider>
 			<MantineProvider defaultColorScheme="dark" theme={themeOverride} cssVariablesResolver={resolver}>
 				<NavigationProgress />
-				<BrowserRouter>
-					<Layout>
-						<Routes>
-							<Route path="/" element={<HomePage />} />
-							<Route path="/search" element={<SearchResultsPage />} />
-							<Route path="/athletes/:id" element={<Athletes />} />
-							<Route path="/teams/:id" element={<Athletes />} />
-							<Route path="/compare" element={<CompareAthletes />} />
-						</Routes>
-					</Layout>
-				</BrowserRouter>
+				<App />
 			</MantineProvider>
 		</HelmetProvider>
 	</React.StrictMode>,

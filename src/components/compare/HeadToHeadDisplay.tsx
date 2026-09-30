@@ -73,6 +73,7 @@ export default function HeadToHeadDisplay({ h2hMatches, athlete1Bouts, athlete1N
 				<Stack gap="sm">
 					<Text fw={600} size="md">Match History:</Text>
 					{h2hMatches
+						.slice()
 						.sort((a, b) => {
 							const aDate = dayjs(a.bout.attributes.goDateTime ?? a.bout.attributes.endDateTime);
 							const bDate = dayjs(b.bout.attributes.goDateTime ?? b.bout.attributes.endDateTime);

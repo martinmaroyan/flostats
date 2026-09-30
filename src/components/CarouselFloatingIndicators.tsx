@@ -14,16 +14,16 @@ export default function CarouselFloatingIndicators({ active, setActive, indicato
 	const [rootRef, setRootRef] = React.useState<HTMLDivElement | null>(null);
 	const [controlsRefs, setControlsRefs] = React.useState<Record<string, HTMLButtonElement | null>>({});
 
-	const setControlRef = (index: number) => (node: HTMLButtonElement) => {
-		controlsRefs[index] = node;
-		setControlsRefs(controlsRefs);
-	};
+	const controlRefs = React.useMemo(() => Array.from({ length: indicators.length }, (_, index) =>
+		(node: HTMLButtonElement | null) => {
+			setControlsRefs(current => current[index] === node ? current : { ...current, [index]: node });
+		}), [indicators.length]);
 
 	const controls = indicators.map((item, index) => (
 		<UnstyledButton
 			key={item}
 			className={styles.control}
-			ref={setControlRef(index)}
+			ref={controlRefs[index]}
 			onClick={() => setActive(index)}
 			mod={{ active: active === index }}
 			px="lg"

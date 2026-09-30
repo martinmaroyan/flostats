@@ -21,6 +21,7 @@ export default class FloAPI {
 		return new Promise((resolve, reject) => {
 			const xhr = new XMLHttpRequest();
 			xhr.open("GET", url, true);
+			xhr.timeout = 30000;
 
 			// Track last reported progress to ensure monotonic updates
 			let lastProgress = 0;
@@ -36,10 +37,21 @@ export default class FloAPI {
 				}
 			});
 			xhr.addEventListener("load", () => {
-				if (onProgress) onProgress(100);
-				resolve(JSON.parse(xhr.responseText) as T);
+				if (xhr.status < 200 || xhr.status >= 300) {
+					reject(new Error(`Request failed (${xhr.status})`));
+					return;
+				}
+				try {
+					const data = JSON.parse(xhr.responseText) as T;
+					onProgress?.(100);
+					resolve(data);
+				} catch {
+					reject(new Error("The API returned invalid JSON"));
+				}
 			});
-			xhr.addEventListener("error", reject);
+			xhr.addEventListener("error", () => reject(new Error("Network request failed")));
+			xhr.addEventListener("timeout", () => reject(new Error("Network request timed out")));
+			xhr.addEventListener("abort", () => reject(new Error("Network request was cancelled")));
 			xhr.send();
 		});
 	}
@@ -62,7 +74,10 @@ export default class FloAPI {
 		let currentLink = `https://floarena-api.flowrestling.org/wrestlers/?identityPersonId=${athleteId}&orderBy=eventEndDateTime&orderDirection=desc&page[size]=40&page[offset]=0` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? "");
 		let nextLink = totalData.links?.next;
 
-		while (nextLink && nextLink !== currentLink) {
+		const visited = new Set([currentLink]);
+		while (nextLink) {
+			if (visited.has(nextLink)) throw new Error("Wrestler pagination repeated a page");
+			visited.add(nextLink);
 			const nextData = await this.fetchWithProgressTyped<WrestlerObject, R, I>(nextLink);
 			totalData.data = [...totalData.data, ...nextData.data];
 			if (nextData.included) totalData.included = [...totalData.included, ...nextData.included];
@@ -77,6 +92,8 @@ export default class FloAPI {
 		// Final flush in case meta.total under-counted.
 		onCount?.(totalData.data.length, totalData.data.length);
 		onProgress?.(100);
+		totalData.meta.total = totalData.data.length;
+		if (totalData.links) totalData.links.next = undefined;
 		return totalData;
 	}
 
@@ -94,7 +111,10 @@ export default class FloAPI {
 		let currentLink = `https://floarena-api.flowrestling.org/bouts/?identityPersonId=${athleteId}&page[size]=40&page[offset]=0&hasResult=true` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? "");
 
 		let nextLink = totalData.links?.next;
-		while (nextLink && nextLink !== currentLink) {
+		const visited = new Set([currentLink]);
+		while (nextLink) {
+			if (visited.has(nextLink)) throw new Error("Bout pagination repeated a page");
+			visited.add(nextLink);
 			const nextData = await this.fetchWithProgressTyped<BoutObject, R, I>(nextLink);
 
 			totalData.data = [...totalData.data, ...nextData.data];
@@ -109,18 +129,21 @@ export default class FloAPI {
 
 		onCount?.(totalData.data.length, totalData.data.length);
 		onProgress?.(100);
+		totalData.meta.total = totalData.data.length;
+		if (totalData.links) totalData.links.next = undefined;
 		return totalData;
 	}
 
 	public static fetchWrestlersByWeightClass<R extends RelationshipToWrestler | void, I extends Exclude<FloObject, WrestlerObject> | void>(weightClassId: UUID, config: FetchConfig, include: readonly string[] = [], extra?: string): Promise<WrestlersResponse<R, I>> {
-		return this.fetchWithProgressTyped<WrestlerObject, R, I>(`https://floarena-api.flowrestling.org/wrestlers/?weightClassId=${weightClassId}&page[size]=${config.pageSize}&page[offset]=${config.pageOffset}` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? ""),);
+		return this.fetchWithProgressTyped<WrestlerObject, R, I>(`https://floarena-api.flowrestling.org/wrestlers/?weightClassId=${weightClassId}&page[size]=${config.pageSize}&page[offset]=${config.pageOffset}` + (include.length ? `&include=${include.join(",")}` : "") + (extra ?? ""), config.onProgress);
 	}
 
 	public static fetchFromNode(node: number, onProgress?: (progress: number) => void) {
 		return this.fetchWithProgress<NodeResult>(`https://api.flowrestling.org/api/collections/from-node/${node}`, onProgress);
 	}
 
-	public static findIncludedObjectById<T extends FloObject>(id: UUID, type: FloObjectTypeString, res: BaseResponse<FloObject, Relationship | void, FloObject>) {
+	public static findIncludedObjectById<T extends FloObject>(id: UUID | null | undefined, type: FloObjectTypeString, res: BaseResponse<FloObject, Relationship | void, FloObject>) {
+		if (!id) return undefined;
 		return res.included.find(i => i.type == type && i.id == id) as T | undefined;
 	}
 }

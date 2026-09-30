@@ -96,7 +96,7 @@ export async function fetchMergedAthleteData(
 	const boutResponses = responses.filter((_, index) => index % 2 === 1) as AthleteBouts[];
 
 	const wrestlers: AthleteWrestlers = {
-		data: wrestlerResponses.flatMap(response => response.data),
+		data: dedupeByObjectId(wrestlerResponses.flatMap(response => response.data)),
 		included: dedupeByObjectId(wrestlerResponses.flatMap(response => response.included)),
 		meta: { total: wrestlerResponses.reduce((total, response) => total + response.data.length, 0) },
 		links: wrestlerResponses[0]?.links,
@@ -108,6 +108,8 @@ export async function fetchMergedAthleteData(
 		links: boutResponses[0]?.links,
 	};
 
+	wrestlers.meta.total = wrestlers.data.length;
+	bouts.meta.total = bouts.data.length;
 	rewriteAliasedWrestlers(wrestlers, bouts, aliasSet, canonicalId);
 	sortWrestlersByEventDate(wrestlers);
 
@@ -145,7 +147,8 @@ export function buildBasicInfo(wrestlers: AthleteWrestlers, bouts: AthleteBouts,
 			matches: bouts.data.filter(bout => {
 				const top = FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.topWrestlerId, "wrestler", bouts);
 				const bottom = FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.bottomWrestlerId, "wrestler", bouts);
-				const current = top?.attributes.identityPersonId === identityPersonId ? top : bottom;
+				const current = top?.attributes.identityPersonId === identityPersonId ? top
+					: bottom?.attributes.identityPersonId === identityPersonId ? bottom : undefined;
 				return current
 					? FloAPI.findIncludedObjectById<TeamObject>(current.attributes.teamId, "team", bouts)?.attributes.identityTeamId === team.identityTeamId
 					: false;
@@ -176,8 +179,9 @@ function rewriteAliasedWrestlers(
 		if (aliasSet.has(wrestler.attributes.identityPersonId)) wrestler.attributes.identityPersonId = canonicalId;
 	}
 	for (const item of bouts.included) {
-		if (item.type === "wrestler" && aliasSet.has(item.attributes.identityPersonId)) {
-			item.attributes.identityPersonId = canonicalId;
+		if (item.type === "wrestler") {
+			item.attributes.identityPersonId = aliasSet.has(item.attributes.identityPersonId)
+				? canonicalId : getCanonicalId(item.attributes.identityPersonId);
 		}
 	}
 }

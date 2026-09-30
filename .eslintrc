@@ -26,6 +26,10 @@
 	},
 	"overrides": [
 		{
+			"files": ["e2e/**/*.ts"],
+			"parserOptions": { "project": "./tsconfig.e2e.json" }
+		},
+		{
 			"env": {
 				"node": true
 			},

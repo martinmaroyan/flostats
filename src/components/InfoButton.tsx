@@ -8,6 +8,7 @@ export default function InfoButton() {
 	return (
 		<>
 			<ActionIcon
+				aria-label="About FloStats"
 				onClick={open}
 				color="blue"
 				size="lg"

@@ -2,8 +2,8 @@ import React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import FloAPI, { SearchResultsTyped } from "../api/FloAPI";
 import { ProgressCoordinator } from "../utils/ProgressCoordinator";
-import { NodeResult, SearchResultPerson, SearchResultPersonUseOfp, SearchResults } from "../api/types/responses";
-import { Badge, Button, Card, Checkbox, Group, Pagination, Skeleton, Stack, Text, Title, Tooltip } from "@mantine/core";
+import { NodeResult, SearchResultPersonUseOfp } from "../api/types/responses";
+import { Alert, Badge, Button, Card, Checkbox, Group, Pagination, Skeleton, Stack, Text, Title, Tooltip } from "@mantine/core";
 import dayjs from "dayjs";
 import { Helmet } from "react-helmet-async";
 
@@ -16,9 +16,10 @@ const PAGE_SIZE = 10;
 export default function SearchResultsPage() {
 	const [searchParams, setSearchParams] = useSearchParams();
 
-	const [broadSearch, setBroadSearch] = React.useState<boolean>(false);
-
-	const [search, setSearch] = React.useState<string | null>(null);
+	const broadSearch = searchParams.get("ofp") === "true";
+	const search = searchParams.get("q")?.trim() ?? "";
+	const page = Math.max(1, Math.min(1000, Math.floor(Number(searchParams.get("page"))) || 1));
+	const [loadError, setLoadError] = React.useState<string | null>(null);
 
 	const [narrowResults, setNarrowResults] = React.useState<SearchResultsTyped<false> | null>(null);
 	const [broadResults, setBroadResults] = React.useState<SearchResultsTyped<true> | null>(null);
@@ -57,119 +58,67 @@ export default function SearchResultsPage() {
 	};
 
 	React.useEffect(() => {
-		if (broadSearch && broadResults && searchParams.get("page") != broadResults?.meta.page.toString()) {
-			searchParams.set("page", broadResults?.meta.page.toString());
-			setSearchParams(searchParams);
-		} else if (narrowResults && searchParams.get("page") != narrowResults?.meta.page.toString()) {
-			searchParams.set("page", narrowResults?.meta.page.toString());
-			setSearchParams(searchParams);
-		}
-	}, [narrowResults, broadResults, broadSearch, searchParams, setSearchParams]);
-
-	React.useEffect(() => {
-		const q = searchParams.get("q");
-		const ofp = searchParams.get("ofp");
-
-		if (q) {
-			if (q != search) setSearch(q);
-
-			document.title = `${q} - FloStats`;
-		}
-
-		if (ofp) {
-			if (broadSearch != (ofp === "true")) setBroadSearch(ofp === "true");
-		}
-
-		//console.log(extraData);
-	}, [broadSearch, extraData, search, searchParams]);
-
-	React.useEffect(() => {
-		if (!search) return;
-		const page = parseInt((searchParams.get("page") ?? "1"));
-		//console.log(`Searching for ${search} (page ${page})`);
-
+		let cancelled = false;
 		setBroadResults(null);
 		setNarrowResults(null);
-
-		searchFor(search, page, searchParams.get("ofp") === "true").then(results => {
-			if (searchParams.get("ofp") === "true") setBroadResults(results as SearchResultsTyped<true>);
-			else setNarrowResults(results as SearchResultsTyped<false>);
-		}).catch(console.error);
-	}, [search, broadSearch, searchParams]);
-
-	const searchFor = async <T extends boolean>(name: string, page: number = 1, useOfp: T) => {
-		if (page > 1000) page = 1000;
 		setExtraData(new Map());
-
-		// Create progress coordinator
+		setSelectedIds(new Set());
+		setLoadError(null);
+		setLoading(Boolean(search));
+		if (!search) return;
 		const progressCoordinator = new ProgressCoordinator(16);
 		progressCoordinator.registerOperation("order-search", 0.5);
 		progressCoordinator.registerOperation("data-search", 0.5);
 		progressCoordinator.start();
-
-		setLoading(true);
-
-		// Data fetched with OFP set to true is ordered correctly
-		const orderData = await FloAPI.searchByName(name, {
-			limit: PAGE_SIZE,
-			page,
-			onProgress: progressCoordinator.getCallback("order-search"),
-			useOfp: true,
-		});
-
-		let data: SearchResultsTyped<T>;
-
-		if (!useOfp) {
-			data = await FloAPI.searchByName<T>(name, {
-				limit: PAGE_SIZE,
-				page,
-				onProgress: progressCoordinator.getCallback("data-search"),
-				useOfp,
-			});
-		} else {
-			// Mark the second operation as complete since we're not doing it
-			progressCoordinator.updateOperation("data-search", 100);
-			data = orderData as SearchResultsTyped<T>;
-			void loadBroadResultDetails(orderData.data ?? []);
-		}
-
-		progressCoordinator.complete();
-		setLoading(false);
-
-		// Extract sequence of IDs
-		const sortSeq = orderData.data?.map(v => v.node.id);
-
-		// Sort data using correct sequence
-		if (!useOfp && data.data && sortSeq) (data as SearchResults<SearchResultPerson>).data?.sort((a, b) => sortSeq.indexOf(a.id) - sortSeq.indexOf(b.id));
-
-		return data;
-	};
+		void (async () => {
+			try {
+				const orderData = await FloAPI.searchByName(search, {
+					limit: PAGE_SIZE, page, useOfp: true,
+					onProgress: progress => { if (!cancelled) progressCoordinator.updateOperation("order-search", progress); },
+				});
+				if (cancelled) return;
+				if (broadSearch) {
+					setBroadResults(orderData);
+					const details = await Promise.allSettled((orderData.data ?? []).map(async result =>
+						[result.node.id, await FloAPI.fetchFromNode(result.node.id)] as const));
+					if (cancelled) return;
+					setExtraData(new Map(details.flatMap(detail => detail.status === "fulfilled" ? [detail.value] : [])));
+				} else {
+					const data = await FloAPI.searchByName(search, {
+						limit: PAGE_SIZE, page, useOfp: false,
+						onProgress: progress => { if (!cancelled) progressCoordinator.updateOperation("data-search", progress); },
+					});
+					if (cancelled) return;
+					const sortSeq = orderData.data?.map(result => result.node.id) ?? [];
+					data.data?.sort((a, b) => sortSeq.indexOf(a.id) - sortSeq.indexOf(b.id));
+					setNarrowResults(data);
+				}
+			} catch (error) {
+				if (!cancelled) setLoadError(error instanceof Error ? error.message : "Search failed");
+			} finally {
+				if (!cancelled) { setLoading(false); progressCoordinator.complete(); }
+			}
+		})();
+		return () => { cancelled = true; progressCoordinator.complete(); };
+	}, [search, broadSearch, page]);
 
 	const switchPage = (page: number) => {
-		if (page == (broadResults?.meta.page ?? narrowResults?.meta.page)) return;
-		if (search) searchFor(search, page, broadSearch).then(data => {
-			if (broadSearch) setBroadResults(data as SearchResultsTyped<true>);
-			else setNarrowResults(data as SearchResultsTyped<false>);
-		}).catch(console.error);
+		setSearchParams(current => {
+			const next = new URLSearchParams(current);
+			next.set("page", String(page));
+			return next;
+		});
 	};
 
 	const broadResultsClick = (result: SearchResultPersonUseOfp) => {
 		void FloAPI.fetchFromNode(result.node.id).then(data => {
-			void navigate(`/athletes/${data.data.arena_person_identity_id}`);
-		});
-	};
-
-	const loadBroadResultDetails = async (results: SearchResultPersonUseOfp[]) => {
-		const details = new Map<number, NodeResult>();
-		for (const result of results) {
-			const extra = await FloAPI.fetchFromNode(result.node.id);
-			details.set(result.node.id, extra);
-		}
-		setExtraData(details);
+			void navigate(getRedirectLink(getCanonicalId(data.data.arena_person_identity_id)));
+		}).catch(error => setLoadError(error instanceof Error ? error.message : "Unable to open profile"));
 	};
 
 	return (
 		<Stack>
+			{loadError && <Alert color="red" title="Search failed">{loadError}</Alert>}
 			{search && (
 				<Helmet>
 					<title>{search} - Wrestler Search Results | FloStats</title>
@@ -302,7 +251,7 @@ export default function SearchResultsPage() {
 			) : (broadResults && broadResults.data && broadSearch) ? (
 				<Stack align="stretch" gap="xl" mb="xl">
 					<Stack>
-						{extraData.size ? dedupByCanonical(Array.from(extraData.values()), e => e.data.original_entity.arena_person_identity_id).map(({ item: extra, group }) => {
+						{dedupByCanonical(Array.from(extraData.values()), e => e.data.original_entity.arena_person_identity_id).map(({ item: extra, group }) => {
 							const canonical = getCanonicalId(extra.data.original_entity.arena_person_identity_id);
 							return (
 								<Card key={extra.data.original_entity.id} styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }} p="lg" className={styles.result} mx="xs">
@@ -332,10 +281,11 @@ export default function SearchResultsPage() {
 									</Group>
 								</Card>
 							);
-						}) : broadResults.data.map((result) => (
+						})}
+						{broadResults.data.filter(result => !extraData.has(result.node.id)).map((result) => (
 							<Card key={result.id} styles={{ root: { textAlign: "left", flexBasis: "11rem", justifyContent: "center" } }} p="lg" className={styles.result} mx="xs" onClick={() => !extraData.get(result.node.id) ? broadResultsClick(result) : null}>
 								<Title order={3}>{result.title}</Title><Text size="xs" c="dimmed">ID: {result.node.id} ({result.id})</Text>
-								<Text>Loading...</Text>
+								<Text size="sm" c="dimmed">Profile details unavailable. Select to retry.</Text>
 							</Card>
 						))}
 					</Stack>

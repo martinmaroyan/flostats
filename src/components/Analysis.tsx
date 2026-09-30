@@ -7,6 +7,7 @@ import { AllBoutRelationships } from "../api/types/relationships";
 import { ObjectIdentifier } from "../api/types/types";
 import FloAPI from "../api/FloAPI";
 import { WrestlerObject } from "../api/types/objects/wrestler";
+import { isForfeit } from "../utils/boutResults";
 
 type Ratio = [number, number];
 
@@ -36,6 +37,7 @@ function reduce(frac: Ratio): Ratio {
 	let a = frac[0];
 	let b = frac[1];
 	let c;
+	if (a === 0 && b === 0) return [0, 0];
 	while (b) {
 		c = a % b; a = b; b = c;
 	}
@@ -66,39 +68,29 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 
 				stats.wins += +isAWin;
 				stats.losses += +!isAWin;
-				stats.pins += +(isAWin && bout.attributes.winType == "F");
+				stats.pins += +(isAWin && ["F", "FALL"].includes(bout.attributes.winType));
 				stats.techs += +(isAWin && bout.attributes.winType == "TF");
 
 				const finish = stats.finishTypes.find(f => f.type == bout.attributes.winType);
 				if (finish) {
 					finish.wins += +isAWin;
 					finish.losses += +!isAWin;
-
-					const time = /(\d?\d?):(\d\d)/.exec(bout.attributes.result);
-
-					if (time && time.length > 1) {
-						const minutes = time.length > 2 ? parseInt(time[1]) : 0;
-						const seconds = time.length > 2 ? parseInt(time[2]) : parseInt(time[1]);
-
-						const quickest = isAWin ? stats.quickestWin : stats.quickestLoss;
-
-						if (quickest) {
-							if (minutes < quickest.minutes || (minutes == quickest.minutes && seconds < quickest.seconds)) {
-								quickest.minutes = minutes;
-								quickest.seconds = seconds;
-								quickest.bout = bout;
-							}
-						} else {
-							stats[isAWin ? "quickestWin" : "quickestLoss"] = { minutes, seconds, bout };
-						}
-					}
 				} else {
 					stats.finishTypes.push({ type: bout.attributes.winType, wins: +isAWin, losses: +!isAWin });
+				}
+				const time = /(?:^|\s)(\d{1,2})?:(\d{2})(?=\s|$)/.exec(bout.attributes.result);
+				if (time && !isForfeit(bout.attributes.winType) && bout.attributes.winType !== "BYE") {
+					const minutes = Number(time[1] ?? 0);
+					const seconds = Number(time[2]);
+					const quickest = isAWin ? stats.quickestWin : stats.quickestLoss;
+					if (seconds < 60 && (!quickest || minutes * 60 + seconds < quickest.minutes * 60 + quickest.seconds)) {
+						stats[isAWin ? "quickestWin" : "quickestLoss"] = { minutes, seconds, bout };
+					}
 				}
 			});
 
 			stats.wlRatio = reduce([stats.wins, stats.losses]);
-			stats.winPercentage = stats.wins / stats.matches;
+			stats.winPercentage = stats.matches ? stats.wins / stats.matches : 0;
 
 			// Process time-series data
 			const boutsWithDates = bouts.data
@@ -114,7 +106,7 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 			const monthlyData = new Map<string, { wins: number, losses: number, matches: number }>();
 
 			boutsWithDates.forEach(({ date, isWin }) => {
-				const monthKey = `${date!.getFullYear()}-${String(date!.getMonth() + 1).padStart(2, '0')}`;
+				const monthKey = `${date!.getFullYear()}-${String(date!.getMonth() + 1).padStart(2, "0")}`;
 
 				if (!monthlyData.has(monthKey)) {
 					monthlyData.set(monthKey, { wins: 0, losses: 0, matches: 0 });
@@ -132,8 +124,8 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 			// Convert to array format for chart
 			stats.timeSeriesData = Array.from(monthlyData.entries())
 				.map(([period, data]) => {
-					const [year, month] = period.split('-');
-					const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+					const [year, month] = period.split("-");
+					const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 					return {
 						period: `${monthNames[parseInt(month) - 1]} ${year}`,
 						matches: data.matches,
@@ -190,7 +182,7 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 					<Text c={stats.quickestLoss ? "var(--mantine-loss-color)" : "var(--mantine-win-color)"}>{stats.quickestLoss ? (stats.quickestLoss.minutes + ":" + ((stats.quickestLoss.seconds < 10 ? "0" : "") + stats.quickestLoss.seconds)) : "N/A"} {stats.quickestLoss ? stats.quickestLoss.bout.attributes.winType : ""}</Text>
 				</Group>
 			</Flex>
-			<Accordion variant="seperated" chevronSize="32">
+			<Accordion variant="separated" chevronSize="32">
 				<Accordion.Item value="Statistics" style={{ borderBottom: "none" }}>
 					<Accordion.Control ta="center">
 						<Title order={3}>See More</Title>
@@ -224,7 +216,7 @@ export default function Analysis(props: AthleteDataProps & { children?: React.Re
 										{ name: "wins", color: "var(--mantine-win-color)", label: "Wins" },
 										{ name: "losses", color: "var(--mantine-loss-color)", label: "Losses" },
 									]}
-									yAxisProps={{ domain: [0, 'auto'] }}
+									yAxisProps={{ domain: [0, "auto"] }}
 								/>
 							)}
 						</Flex>

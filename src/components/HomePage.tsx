@@ -22,7 +22,7 @@ import {
 } from "@tabler/icons-react";
 import React from "react";
 import { useNavigate, Link } from "react-router";
-import { ID_REGEX } from "../main";
+import { ID_REGEX } from "../utils/identity";
 import styles from "./HomePage.module.css";
 
 const RECENT_SEARCHES_KEY = "flostats_recent_searches";
@@ -37,7 +37,10 @@ function getRecentSearches(): RecentSearch[] {
 	try {
 		const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
 		if (!stored) return [];
-		return JSON.parse(stored);
+		const parsed: unknown = JSON.parse(stored);
+		return Array.isArray(parsed) ? parsed.filter((entry: unknown): entry is RecentSearch =>
+			typeof entry === "object" && entry !== null && "query" in entry && typeof entry.query === "string"
+			&& "timestamp" in entry && typeof entry.timestamp === "number") : [];
 	} catch {
 		return [];
 	}
@@ -90,9 +93,9 @@ export default function HomePage() {
 		if (!test) {
 			saveRecentSearch(trimmed);
 			setRecentSearches(getRecentSearches());
-			navigate(`/search?q=${encodeURIComponent(trimmed)}&page=1&ofp=${useOfp}`);
+			void navigate(`/search?q=${encodeURIComponent(trimmed)}&page=1&ofp=${useOfp}`);
 		} else {
-			navigate(`/athletes/${test[0]}`);
+			void navigate(`/athletes/${test[0]}`);
 		}
 	};
 
@@ -140,10 +143,10 @@ export default function HomePage() {
 		<Stack gap="xl" className={styles.container}>
 			{/* Header Section */}
 			<Box className={styles.header}>
-				<Title order={1} className={styles.title}>
+				<Title order={1} ta="center" className={styles.title}>
 					FloStats
 				</Title>
-				<Text size="lg" c="dimmed" className={styles.subtitle}>
+				<Text size="lg" c="dimmed" ta="center" className={styles.subtitle}>
 					Search for high school wrestlers and explore their match records, tournament results, and season statistics.
 				</Text>
 			</Box>
@@ -211,10 +214,10 @@ export default function HomePage() {
 			{/* Recent Searches */}
 			{recentSearches.length > 0 && (
 				<Box className={styles.recentSection}>
-					<Text size="sm" c="dimmed" mb="xs" fw={500}>
+					<Text size="sm" c="dimmed" mb="xs" fw={500} ta="center">
 						Recent Searches
 					</Text>
-					<Group gap="xs">
+					<Group gap="xs" justify="center">
 						{recentSearches.map((search) => (
 							<Button
 								key={search.query}

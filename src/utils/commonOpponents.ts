@@ -46,7 +46,7 @@ function extractOpponentIds(
 		// Determine which wrestler is the opponent
 		const opponent = topWrestler?.attributes.identityPersonId === athleteId
 			? bottomWrestler
-			: topWrestler;
+			: bottomWrestler?.attributes.identityPersonId === athleteId ? topWrestler : undefined;
 
 		if (opponent?.attributes.identityPersonId) {
 			opponentIds.add(opponent.attributes.identityPersonId);
@@ -81,7 +81,7 @@ function getBoutsAgainstOpponent(
 		// Determine which wrestler is the opponent
 		const opponent = topWrestler?.attributes.identityPersonId === athleteId
 			? bottomWrestler
-			: topWrestler;
+			: bottomWrestler?.attributes.identityPersonId === athleteId ? topWrestler : undefined;
 
 		if (opponent?.attributes.identityPersonId === opponentId) {
 			// Get the winner
@@ -146,8 +146,8 @@ export function findCommonOpponents(
 
 		// Get opponent name (from first bout)
 		const opponentName = athlete1BoutsVsOpponent[0]?.opponent?.attributes.fullName ||
-		                     athlete2BoutsVsOpponent[0]?.opponent?.attributes.fullName ||
-		                     "Unknown";
+			athlete2BoutsVsOpponent[0]?.opponent?.attributes.fullName ||
+			"Unknown";
 
 		commonOpponents.push({
 			opponentId,
@@ -240,7 +240,7 @@ export function findHeadToHeadMatches(
 
 		const opponent = topWrestler?.attributes.identityPersonId === athlete1Id
 			? bottomWrestler
-			: topWrestler;
+			: bottomWrestler?.attributes.identityPersonId === athlete1Id ? topWrestler : undefined;
 
 		// Check if the opponent is athlete2
 		if (opponent?.attributes.identityPersonId === athlete2Id) {
@@ -251,11 +251,13 @@ export function findHeadToHeadMatches(
 			);
 
 			const athlete1Won = winner?.attributes.identityPersonId === athlete1Id;
+			const athlete = topWrestler?.attributes.identityPersonId === athlete1Id ? topWrestler : bottomWrestler;
+			if (!winner || !athlete || bout.attributes.winType === "NC") return;
 
 			h2hMatches.push({
 				bout,
-				winner: athlete1Won ? (topWrestler?.attributes.identityPersonId === athlete1Id ? topWrestler : bottomWrestler)! : opponent,
-				loser: athlete1Won ? opponent : (topWrestler?.attributes.identityPersonId === athlete1Id ? topWrestler : bottomWrestler)!,
+				winner: athlete1Won ? athlete : opponent,
+				loser: athlete1Won ? opponent : athlete,
 				athlete1Won,
 			});
 		}

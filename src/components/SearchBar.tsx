@@ -1,6 +1,6 @@
 import { Anchor, Button, Group, TextInput } from "@mantine/core";
 import React from "react";
-import { ID_REGEX } from "../main";
+import { ID_REGEX } from "../utils/identity";
 import { useNavigate, Link } from "react-router";
 
 type Props = {
@@ -12,40 +12,27 @@ export default function SearchBar({ loading }: Props) {
 	const [inputError, setInputError] = React.useState(false);
 	const [inputFocused, setInputFocused] = React.useState<boolean>(false);
 
-	const [initialLoad, setInitialLoad] = React.useState<boolean>(false);
-
-	const searchButtonRef = React.useRef<HTMLButtonElement>(null);
-
 	const navigate = useNavigate();
 
 	React.useEffect(() => {
-		if (!initialLoad) {
-			setInitialLoad(true);
-			const search = new URLSearchParams(window.location.search).get("q");
-			if (search) setInputValue(search);
-
-			document.addEventListener("keydown", e => {
-				if (e.repeat) return;
-				if (e.key === "Enter") {
-					searchButtonRef.current?.click();
-				}
-			});
-		}
-	});
+		const search = new URLSearchParams(window.location.search).get("q");
+		if (search) setInputValue(search);
+	}, []);
 
 	React.useEffect(() => {
 		if (inputError && inputFocused) setInputError(false);
-	}, [inputFocused]);
+	}, [inputFocused, inputError]);
 
-	const searchFor = async (query: string, useOfp: boolean) => {
+	const searchFor = (query: string, useOfp: boolean) => {
+		query = query.trim();
 		if (!query) {
 			// setInputError(true);
 		} else {
 			const test = ID_REGEX.exec(query);
 			if (!test) {
-				navigate(`/search?q=${encodeURIComponent(query)}&page=1&ofp=${useOfp}`);
+				void navigate(`/search?q=${encodeURIComponent(query)}&page=1&ofp=${useOfp}`);
 			} else {
-				navigate(`/athletes/${test[0]}`);
+				void navigate(`/athletes/${test[0]}`);
 			}
 		}
 	};
@@ -57,6 +44,7 @@ export default function SearchBar({ loading }: Props) {
 				name="wrestler-search"
 				onChange={e => setInputValue(e.currentTarget.value)}
 				placeholder="Enter name or ID..."
+				onKeyDown={event => { if (event.key === "Enter" && !event.repeat) searchFor(inputValue, false); }}
 				error={inputError}
 				onFocus={() => setInputFocused(true)}
 				onBlur={() => setInputFocused(false)}
@@ -72,7 +60,6 @@ export default function SearchBar({ loading }: Props) {
 						onClick={() => {
 							searchFor(inputValue, false);
 						}}
-						ref={searchButtonRef}
 					>
 						Narrow Search
 					</Button>

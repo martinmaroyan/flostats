@@ -26,22 +26,22 @@ export default function GeneralInfoDisplay({ info, setIgnoredTeams, reset, setRe
 	const [ignored, setIgnored] = React.useState<Set<string>>(new Set());
 
 	React.useEffect(() => {
-		//console.log("info");
 		setIgnored(new Set());
 	}, [info]);
 
 	React.useEffect(() => {
 		if (reset) {
-			//console.log("setting ignored");
 			setIgnored(new Set());
 			setReset(false);
 		}
-	}, [reset]);
+	}, [reset, setReset]);
 
-	React.useEffect(() => {
-		//console.log("ignored");
-		setIgnoredTeams(ignored);
-	}, [ignored]);
+	const toggleTeam = (teamId: string) => {
+		const next = new Set(ignored);
+		if (next.has(teamId)) next.delete(teamId); else next.add(teamId);
+		setIgnored(next);
+		setIgnoredTeams(next);
+	};
 
 	return (
 		<Card p="xl" styles={{
@@ -68,10 +68,13 @@ export default function GeneralInfoDisplay({ info, setIgnoredTeams, reset, setRe
 						{info.teams.map((team, index) => {
 							const teamId = team.attributes.identityTeamId ?? "";
 							return (
-								<Paper p="sm" withBorder key={teamId || index} opacity={teamId && ignored.has(teamId) ? 0.5 : 1}>
+								<Paper p="sm" withBorder key={teamId || index} opacity={teamId && ignored.has(teamId) ? 0.5 : 1}
+									role="button" tabIndex={0} aria-pressed={ignored.has(teamId)}
+									onClick={() => { if (teamId) toggleTeam(teamId); }}
+									onKeyDown={event => { if (teamId && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); toggleTeam(teamId); } }}>
 									<Stack gap={2}>
 										<Text size="md" fw="bold">{team.attributes.name}</Text>
-										<Text size="sm">{team.attributes.location.name ?? "Unknown location"}</Text>
+										<Text size="sm">{team.attributes.location?.name ?? "Unknown location"}</Text>
 										<Text size="sm">{team.matches.length} matches</Text>
 									</Stack>
 								</Paper>

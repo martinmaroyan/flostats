@@ -32,7 +32,7 @@ export type NodeResult = {
 		duration: number;
 		sites: number[];
 		type: string;
-		extra: any;
+		extra: unknown;
 	};
 	data: {
 		asset_url: string;
@@ -56,7 +56,7 @@ export type NodeResult = {
 		aggregated_node_ids: number[];
 		title: string;
 		short_title: string;
-		code: any;
+		code: unknown;
 		arena_person_identity_id: UUID;
 		slug: string;
 		slug_uri: string;

@@ -78,9 +78,9 @@ def event_placements(event_id):
 				continue
 			if best is None or placement < best:
 				best = placement
-			wc_refs = relationship_ids(bp, "weightClass")
-			if wc_refs:
-				wcid = wc_refs[0][1]
+				wc_refs = relationship_ids(bp, "weightClass")
+				if wc_refs:
+					wcid = wc_refs[0][1]
 
 		if best is None or wcid is None:
 			continue

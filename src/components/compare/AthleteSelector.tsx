@@ -40,7 +40,7 @@ export default function AthleteSelector() {
 	// Handle compare button click
 	const handleCompare = () => {
 		if (athlete1Id && athlete2Id) {
-			navigate(`/compare?athlete1=${athlete1Id}&athlete2=${athlete2Id}`);
+			void navigate(`/compare?athlete1=${athlete1Id}&athlete2=${athlete2Id}`);
 		}
 	};
 
@@ -88,12 +88,12 @@ export default function AthleteSelector() {
 					{!athlete1Id && !athlete2Id
 						? "Select both wrestlers to compare"
 						: !athlete1Id
-						? "Select Wrestler 1"
-						: !athlete2Id
-						? "Select Wrestler 2"
-						: athlete1Id === athlete2Id
-						? "Select different wrestlers"
-						: "Compare Wrestlers"}
+							? "Select Wrestler 1"
+							: !athlete2Id
+								? "Select Wrestler 2"
+								: athlete1Id === athlete2Id
+									? "Select different wrestlers"
+									: "Compare Wrestlers"}
 				</Button>
 
 				<Text size="sm" c="dimmed" ta="center">

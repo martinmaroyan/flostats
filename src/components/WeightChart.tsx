@@ -1,7 +1,9 @@
 import { ChartTooltip, LineChart, LineChartProps } from "@mantine/charts";
 import FloAPI from "../api/FloAPI";
-import { EventAttributes } from "../api/types/objects/event";
-import { WeightClassObject, WeightClassAttributes } from "../api/types/objects/weightClass";
+import { EventObject } from "../api/types/objects/event";
+import { WeightClassObject } from "../api/types/objects/weightClass";
+import { WrestlerObject } from "../api/types/objects/wrestler";
+import { FloObject } from "../api/types/types";
 import { WrestlersResponse } from "../api/types/responses";
 import React, { useEffect } from "react";
 import { Stack, Title } from "@mantine/core";
@@ -10,7 +12,7 @@ import dayjs from "dayjs";
 
 type WeightChartProps = {
 	h: number;
-	data?: WrestlersResponse<void, WeightClassObject> | null;
+	data?: WrestlersResponse<void, Exclude<FloObject, WrestlerObject>> | null;
 	startDate?: Date | null;
 	endDate?: Date | null;
 	chartProps?: LineChartProps;
@@ -20,28 +22,26 @@ export default function WeightChart({ h = 400, data, startDate, endDate, chartPr
 	const [dataMap, setDataMap] = React.useState<Map<number, { date: number, "Weight Class Max": number, "Exact Weight": number }>>(new Map());
 
 	useEffect(() => {
-		setDataMap(new Map());
+		const next = new Map<number, { date: number; "Weight Class Max": number; "Exact Weight": number; event: string }>();
 		data?.data.forEach(wrestler => {
-			const event = FloAPI.findIncludedObjectById(wrestler.attributes.eventId, "event", data)?.attributes as EventAttributes;
+			const event = FloAPI.findIncludedObjectById<EventObject>(wrestler.attributes.eventId, "event", data)?.attributes;
+			if (!event) return;
 
 			if (startDate && new Date(event.startDateTime) < startDate) return;
 			if (endDate && new Date(event.startDateTime) > endDate) return;
 
-			const weightClass = FloAPI.findIncludedObjectById(wrestler.attributes.weightClassId, "weightClass", data)?.attributes as WeightClassAttributes;
+			const weightClass = FloAPI.findIncludedObjectById<WeightClassObject>(wrestler.attributes.weightClassId, "weightClass", data)?.attributes;
 			if (weightClass) {
-				//console.log(weightClass);
 				const obj = {
 					date: new Date(event.startDateTime).getTime(),
 					"Weight Class Max": weightClass.maxWeight,
 					"Exact Weight": wrestler.attributes.exactWeight,
 					event: event.name,
 				};
-				setDataMap(prev => {
-					prev.set(obj.date, obj);
-					return prev;
-				});
+				next.set(obj.date, obj);
 			}
 		});
+		setDataMap(next);
 	}, [data, startDate, endDate]);
 
 	return (

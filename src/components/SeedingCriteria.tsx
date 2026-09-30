@@ -13,7 +13,8 @@ import {
 	CriteriaWin,
 	TOURNAMENT_LABELS,
 } from "../utils/seedingCriteria";
-import { loadManifest, loadPlacementIndex, ManifestEntry, PersonRecord, PlacementIndex } from "../utils/placementIndex";
+import { loadManifest, loadPlacementIndex, lookup, ManifestEntry, PersonRecord, PlacementIndex } from "../utils/placementIndex";
+import { isForfeit } from "../utils/boutResults";
 
 type SeasonBlock = {
 	/** Calendar year of the postseason at the END of this season (also the index year). */
@@ -46,8 +47,8 @@ function buildSeasonBlock(
 	const seasonStart = new Date(postseasonYear - 1, 10, 1).getTime();
 	const seasonEnd = new Date(postseasonYear, 10, 1).getTime();
 
-	const postseason = currIndex?.byPerson[athleteId] ?? null;
-	const startingFrom = prevIndex?.byPerson[athleteId] ?? null;
+	const postseason = currIndex ? lookup(currIndex, athleteId) : null;
+	const startingFrom = prevIndex ? lookup(prevIndex, athleteId) : null;
 	const startingPoints = startingFrom?.highestPoints ?? 0;
 
 	const wins: CriteriaWin[] = [];
@@ -80,13 +81,13 @@ function buildSeasonBlock(
 			const winner = FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.winnerWrestlerId, "wrestler", bouts);
 			const isAWin = winner?.attributes.identityPersonId === athleteId;
 
-			const opponentRecord = prevIndex?.byPerson[opponentId] ?? null;
+			const opponentRecord = prevIndex ? lookup(prevIndex, opponentId) : null;
 			const opponentName = opponent.attributes.fullName
 				?? ([opponent.attributes.firstName, opponent.attributes.lastName].filter(Boolean).join(" ") || opponentRecord?.fullName)
 				?? null;
 
 			if (isAWin) {
-				if (winType === "FOR") continue;
+				if (isForfeit(winType)) continue;
 				if (!opponentRecord) continue;
 				wins.push({
 					boutId: bout.id,
@@ -123,10 +124,11 @@ export default function SeedingCriteria({ bouts, identityPersonId }: AthleteData
 	const [manifest, setManifest] = useState<ManifestEntry[] | null>(null);
 	const [indexes, setIndexes] = useState<Map<number, PlacementIndex>>(new Map());
 	const [loading, setLoading] = useState(true);
+	const [loadError, setLoadError] = useState<string | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
-		(async () => {
+		void (async () => {
 			try {
 				const m = await loadManifest();
 				if (cancelled) return;
@@ -135,7 +137,7 @@ export default function SeedingCriteria({ bouts, identityPersonId }: AthleteData
 				if (cancelled) return;
 				setIndexes(new Map(loaded));
 			} catch (e) {
-				console.error("seeding indexes failed to load", e);
+				if (!cancelled) setLoadError(e instanceof Error ? e.message : "Unable to load placement indexes");
 			} finally {
 				if (!cancelled) setLoading(false);
 			}
@@ -144,7 +146,7 @@ export default function SeedingCriteria({ bouts, identityPersonId }: AthleteData
 	}, []);
 
 	const seasons = useMemo<SeasonBlock[]>(() => {
-		if (!manifest || indexes.size === 0) return [];
+		if (!manifest?.length || indexes.size === 0) return [];
 		// Postseason years are the years we have indexes for, plus one beyond the latest
 		// (so we can show the most recent season even if its postseason is the latest index).
 		// Actually each manifest year Y is itself the postseason for season (Y-1)→Y, so just iterate manifest.
@@ -181,6 +183,8 @@ export default function SeedingCriteria({ bouts, identityPersonId }: AthleteData
 
 				{loading ? (
 					<Group gap="xs"><Loader size="sm" /><Text size="sm" c="dimmed">Loading placement indexes…</Text></Group>
+				) : loadError ? (
+					<Text c="red">{loadError}</Text>
 				) : seasons.length === 0 ? (
 					<Text c="dimmed">No MA postseason activity found for this athlete.</Text>
 				) : (

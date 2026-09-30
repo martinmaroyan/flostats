@@ -1,0 +1,22 @@
+.root {
+	position: relative;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--mantine-spacing-xs);
+}
+
+.control {
+	position: relative;
+	border-radius: var(--mantine-radius-sm);
+}
+
+.controlLabel {
+	position: relative;
+	z-index: 1;
+}
+
+.indicator {
+	background-color: var(--mantine-color-default);
+	border-radius: var(--mantine-radius-sm);
+	box-shadow: var(--mantine-shadow-xs);
+}

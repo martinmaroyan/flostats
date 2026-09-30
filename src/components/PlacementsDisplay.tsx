@@ -21,10 +21,11 @@ export default function PlacementsDisplay({ wrestlers }: PlacementsDisplayProps)
 		<Accordion p="2rem">
 			{wrestlers?.data.map(wrestler => {
 				//const wrestler = wrestlers.data.find(w => w.id == placement.attributes.wrestlerId);
-				const placement = wrestler?.relationships.bracketPlacements.data.length ? FloAPI.findIncludedObjectById<BracketPlacementObject>(wrestler.relationships.bracketPlacements.data[0].id, "bracketPlacement", wrestlers) : null;
+				const placementId = wrestler.relationships?.bracketPlacements?.data?.[0]?.id;
+				const placement = placementId ? FloAPI.findIncludedObjectById<BracketPlacementObject>(placementId, "bracketPlacement", wrestlers) : null;
 				const event = FloAPI.findIncludedObjectById<EventObject>(wrestler.attributes.eventId, "event", wrestlers);
-				const weightClass = wrestler ? FloAPI.findIncludedObjectById<WeightClassObject>(wrestler.relationships.weightClass.data.id, "weightClass", wrestlers) : null;
-				const division = wrestler ? FloAPI.findIncludedObjectById<DivisionObject>(wrestler.relationships.division.data.id, "division", wrestlers) : null;
+				const weightClass = FloAPI.findIncludedObjectById<WeightClassObject>(wrestler.attributes.weightClassId, "weightClass", wrestlers);
+				const division = FloAPI.findIncludedObjectById<DivisionObject>(wrestler.attributes.divisionId, "division", wrestlers);
 
 				const color = placement?.attributes.placement == 1 ? "var(--mantine-color-green-4)" :
 					placement?.attributes.placement == 2 ? "var(--mantine-color-green-2)" :

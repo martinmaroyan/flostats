@@ -10,7 +10,7 @@ export default function ThemeToggle(props: ActionIconProps) {
 	};
 
 	return (
-		<ActionIcon {...props} onClick={toggle} color={theme.primaryColor}>
+		<ActionIcon aria-label="Toggle color scheme" {...props} onClick={toggle} color={theme.primaryColor}>
 			{colorScheme === "dark" ? <IconSun /> : <IconMoon />}
 		</ActionIcon>
 	);

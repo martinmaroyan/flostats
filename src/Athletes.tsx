@@ -1,5 +1,5 @@
 import React from "react";
-import { Anchor, Badge, Center, Checkbox, Group, Stack, Tooltip } from "@mantine/core";
+import { Alert, Anchor, Badge, Center, Checkbox, Group, Stack, Tooltip } from "@mantine/core";
 import { IconLink } from "@tabler/icons-react";
 import AthleteLoadingPanel, { LoadCounters } from "./components/AthleteLoadingPanel";
 import { nprogress } from "@mantine/nprogress";
@@ -24,8 +24,9 @@ import GeneralInfoDisplay, { BasicInfo } from "./components/GeneralInfoDisplay";
 
 import TimeframeSummary from "./components/TimeframeSummary";
 import SeedingCriteria from "./components/SeedingCriteria";
-import { getCanonicalId } from "./utils/aliases";
+import { useAliasGroups } from "./utils/aliases";
 import { fetchMergedAthleteData } from "./utils/athleteData";
+import { isForfeit } from "./utils/boutResults";
 
 export type AthleteDataProps = {
 	wrestlers: WrestlersResponse<AllWrestlerRelationships, Exclude<FloObject, WrestlerObject>>,
@@ -54,7 +55,8 @@ export default function Athletes() {
 	const [oldestBout, setOldestBout] = React.useState<Date | undefined>(undefined);
 	const [newestBout, setNewestBout] = React.useState<Date | undefined>(undefined);
 
-	const [downloadingFor, setDownloadingFor] = React.useState<string | null>(null);
+	const aliasGroups = useAliasGroups();
+	const [loadError, setLoadError] = React.useState<string | null>(null);
 
 	const [athleteId, setAthleteId] = React.useState<string | null>(null);
 	const [mergedAliases, setMergedAliases] = React.useState<string[]>([]);
@@ -72,36 +74,27 @@ export default function Athletes() {
 		ignoredTeams: new Set<string>(),
 	});
 
-	React.useEffect(() => {
-		if (!id) return;
-		const canonical = getCanonicalId(id);
-		if (athleteId === canonical) return;
-		if (downloadingFor === canonical) return;
-		void downloadData(id);
-	}, [id]);
-
 	const filteredBouts = React.useMemo(() => {
 		let total = 0;
-		//console.log("Filtering bouts");
 
 		return bouts ? {
 			data: bouts.data.filter(bout => {
 				const date = dayjs(bout.attributes.goDateTime ?? bout.attributes.endDateTime ?? FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", bouts)?.attributes.startDateTime);
-				if (startDate && date.isBefore(dayjs(startDate))) return false;
-				if (endDate && date.isAfter(dayjs(endDate))) return false;
+				if (startDate && date.isBefore(dayjs(startDate), "day")) return false;
+				if (endDate && date.isAfter(dayjs(endDate), "day")) return false;
 				if (bout.attributes.winType == "NC") return false;
 				if (bout.attributes.winType == "BYE" && !filter.byes) return false;
-				if (bout.attributes.winType == "FOR" && !filter.forfeits) return false;
+				if (isForfeit(bout.attributes.winType) && !filter.forfeits) return false;
 				const event = FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", bouts);
 				if (event?.attributes.isDual && !filter.eventType.duals) return false;
 				if (!event?.attributes.isDual && !filter.eventType.tournaments) return false;
 
-				const topWrestler = FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.topWrestlerId, "wrestler", bouts) as NonNullable<WrestlerObject>;
-				const bottomWrestler = FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.bottomWrestlerId, "wrestler", bouts) as NonNullable<WrestlerObject>;
+				const topWrestler = FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.topWrestlerId, "wrestler", bouts);
+				const bottomWrestler = FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.bottomWrestlerId, "wrestler", bouts);
 
 				const thisWrestler = topWrestler?.attributes.identityPersonId == athleteId ? topWrestler : bottomWrestler;
 
-				const team = FloAPI.findIncludedObjectById<TeamObject>(thisWrestler.attributes.teamId, "team", bouts);
+				const team = thisWrestler ? FloAPI.findIncludedObjectById<TeamObject>(thisWrestler.attributes.teamId, "team", bouts) : undefined;
 				if (team?.attributes.identityTeamId && filter.ignoredTeams.has(team?.attributes.identityTeamId)) return false;
 				total++;
 				return true;
@@ -118,8 +111,8 @@ export default function Athletes() {
 			data: wrestlers.data.filter(wrestler => {
 				const event = FloAPI.findIncludedObjectById<EventObject>(wrestler.attributes.eventId, "event", wrestlers);
 				const date = dayjs(event?.attributes.endDateTime ?? event?.attributes.startDateTime);
-				if (startDate && date.isBefore(dayjs(startDate))) return false;
-				if (endDate && date.isAfter(dayjs(endDate))) return false;
+				if (startDate && date.isBefore(dayjs(startDate), "day")) return false;
+				if (endDate && date.isAfter(dayjs(endDate), "day")) return false;
 				if (!filter.eventType.duals && event?.attributes.isDual) return false;
 				if (!filter.eventType.tournaments && !event?.attributes.isDual) return false;
 
@@ -203,81 +196,98 @@ export default function Athletes() {
 			}
 		});
 
-		//console.log({seasons});
 
 		return seasons;
 	}, [filteredBouts, filteredWrestlers]);
 
-	const downloadData = async (urlId: string) => {
-		const canonical = getCanonicalId(urlId);
-
-		if (athleteId === canonical || downloadingFor === canonical) return;
-
-		setDownloadingFor(canonical);
+	React.useEffect(() => {
+		if (!id) return;
+		let cancelled = false;
 		setDownloading(true);
+		setLoadError(null);
+		setAthleteId(null);
+		setMergedAliases([]);
+		setOldestBout(undefined);
+		setNewestBout(undefined);
+		setStartDate(null);
+		setEndDate(null);
+		setFilter(current => ({ ...current, ignoredTeams: new Set() }));
 		setWrestlers(null);
 		setBouts(null);
 		setBasicInfo(null);
 		setLoadCounters({ wrestlersLoaded: 0, wrestlersTotal: null, boutsLoaded: 0, boutsTotal: null, overallProgress: null });
 
-		try {
-			nprogress.start();
-			const { aliases, canonicalId, wrestlers: wrestlersResponse, bouts: boutsResponse, basicInfo } = await fetchMergedAthleteData(
-				urlId,
-				progress => {
-					nprogress.set(progress);
-					setLoadCounters(current => ({ ...current, overallProgress: progress }));
-				},
-				(kind, loaded, total) => setLoadCounters(current => kind === "wrestlers"
-					? { ...current, wrestlersLoaded: loaded, wrestlersTotal: total }
-					: { ...current, boutsLoaded: loaded, boutsTotal: total }),
-			);
+		void (async () => {
+			try {
+				nprogress.start();
+				const { aliases, canonicalId, wrestlers: wrestlersResponse, bouts: boutsResponse, basicInfo } = await fetchMergedAthleteData(
+					id,
+					progress => {
+						if (cancelled) return;
+						nprogress.set(progress);
+						setLoadCounters(current => ({ ...current, overallProgress: progress }));
+					},
+					(kind, loaded, total) => {
+						if (cancelled) return;
+						setLoadCounters(current => kind === "wrestlers"
+							? { ...current, wrestlersLoaded: loaded, wrestlersTotal: total }
+							: { ...current, boutsLoaded: loaded, boutsTotal: total });
+					},
+				);
+				if (cancelled) return;
 
-			setWrestlers(wrestlersResponse);
-			setBasicInfo(basicInfo);
-			setMergedAliases(aliases.length > 1 ? aliases : []);
+				setWrestlers(wrestlersResponse);
+				setBasicInfo(basicInfo);
+				setMergedAliases(aliases.length > 1 ? aliases : []);
 
-			document.title = `${basicInfo.name} - FloStats`;
+				document.title = `${basicInfo.name} - FloStats`;
 
-			setBouts(boutsResponse);
+				setBouts(boutsResponse);
 
-			setAthleteId(canonicalId);
-			setDownloading(false);
+				setAthleteId(canonicalId);
+				setDownloading(false);
 
-			(window as any)["bouts"] = boutsResponse;
+				const boundDates: Date[] = [];
+				for (const bout of boutsResponse.data) {
+					const event = FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", boutsResponse);
+					for (const d of [bout.attributes.goDateTime, bout.attributes.endDateTime, event?.attributes.startDateTime, event?.attributes.endDateTime]) {
+						if (d && dayjs(d).isValid()) boundDates.push(dayjs(d).toDate());
+					}
+				}
+				for (const wrestler of wrestlersResponse.data) {
+					const event = FloAPI.findIncludedObjectById<EventObject>(wrestler.attributes.eventId, "event", wrestlersResponse);
+					for (const d of [event?.attributes.startDateTime, event?.attributes.endDateTime]) {
+						if (d && dayjs(d).isValid()) boundDates.push(dayjs(d).toDate());
+					}
+				}
 
-			const boundDates: Date[] = [];
-			for (const bout of boutsResponse.data) {
-				const event = FloAPI.findIncludedObjectById<EventObject>(bout.attributes.eventId, "event", boutsResponse);
-				for (const d of [bout.attributes.goDateTime, bout.attributes.endDateTime, event?.attributes.startDateTime, event?.attributes.endDateTime]) {
-					if (d) boundDates.push(dayjs(d).toDate());
+				if (boundDates.length) {
+					const oldest = boundDates.reduce((a, b) => a < b ? a : b);
+					const newest = boundDates.reduce((a, b) => a > b ? a : b);
+					setOldestBout(oldest);
+					setNewestBout(newest);
+
+					setStartDate(oldest);
+					setEndDate(newest);
+				}
+
+				nprogress.complete();
+
+			} catch (e) {
+				if (!cancelled) setLoadError(e instanceof Error ? e.message : "Unable to load athlete data");
+			} finally {
+				if (!cancelled) {
+					setDownloading(false);
+					nprogress.complete();
+					cancelled = true;
 				}
 			}
-			for (const wrestler of wrestlersResponse.data) {
-				const event = FloAPI.findIncludedObjectById<EventObject>(wrestler.attributes.eventId, "event", wrestlersResponse);
-				for (const d of [event?.attributes.startDateTime, event?.attributes.endDateTime]) {
-					if (d) boundDates.push(dayjs(d).toDate());
-				}
-			}
-
-			if (boundDates.length) {
-				const oldest = boundDates.reduce((a, b) => a < b ? a : b);
-				const newest = boundDates.reduce((a, b) => a > b ? a : b);
-				setOldestBout(oldest);
-				setNewestBout(newest);
-
-				setStartDate(oldest);
-				setEndDate(newest);
-			}
-
+		})();
+		return () => {
+			cancelled = true;
 			nprogress.complete();
-
-			//console.log(((performance.now() - start) / 1000).toFixed(2) + "s");
-		} catch (e) {
-			console.error(e);
-			nprogress.complete();
-		}
-	};
+		};
+	}, [id, aliasGroups]);
 
 	// Calculate stats for SEO meta description
 	const athleteStats = React.useMemo(() => {
@@ -293,7 +303,7 @@ export default function Athletes() {
 
 			if (isWin) {
 				wins++;
-				if (bout.attributes.winType === "FALL") pins++;
+				if (["F", "FALL"].includes(bout.attributes.winType)) pins++;
 			} else {
 				losses++;
 			}
@@ -307,6 +317,7 @@ export default function Athletes() {
 
 	return (
 		<Stack w="100%" align="center">
+			{loadError && <Alert color="red" title="Unable to load athlete">{loadError}</Alert>}
 			{basicInfo && athleteStats && (
 				<Helmet>
 					<title>{basicInfo.name} - Wrestling Stats & Match History | FloStats</title>
@@ -361,7 +372,7 @@ export default function Athletes() {
 			) : (
 				<>
 					{mergedAliases.length > 1 ? <MergedProfilesBadge aliases={mergedAliases} canonical={athleteId} /> : null}
-				{basicInfo ? <GeneralInfoDisplay info={basicInfo} setIgnoredTeams={teams => setFilter({ ...filter, ignoredTeams: teams })} reset={false} setReset={() => {}} /> : null}
+					{basicInfo ? <GeneralInfoDisplay info={basicInfo} setIgnoredTeams={teams => setFilter({ ...filter, ignoredTeams: teams })} reset={false} setReset={() => {}} /> : null}
 					{athleteId && (
 						<Anchor
 							component={Link}
@@ -405,12 +416,6 @@ export default function Athletes() {
 					) : null}
 				</>
 			)}
-			{/*wrestlers ? (
-				<Stack>
-					<Title order={2}>Weight Chart</Title>
-					<HighlightAndZoomLineChart h={400} data={wrestlers as WrestlersResponse<void, WeightClassObject>} startDate={startDate} endDate={endDate} />
-				</Stack>
-			) : null*/}
 		</Stack>
 	);
 }
