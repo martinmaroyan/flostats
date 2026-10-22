@@ -71,8 +71,8 @@ export default function InfoButton() {
 					<div>
 						<Text>
 							Created by{" "}
-							<Text component="a" href="https://github.com/MartinTintin3" target="_blank" rel="noopener noreferrer" c="blue">
-								MartinTintin3
+							<Text component="a" href="https://github.com/martinmaroyan" target="_blank" rel="noopener noreferrer" c="blue">
+								Martin Maroyan
 							</Text>{" "}
 							on GitHub
 						</Text>
