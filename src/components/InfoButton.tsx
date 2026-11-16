@@ -51,7 +51,7 @@ export default function InfoButton() {
 					<div>
 						<Title order={3}>Where does the data come from?</Title>
 						<Text>
-							The data is sourced from FloWrestling APIs, providing accurate and up-to-date information on matches, tournaments, and wrestler statistics.
+							Live mode uses FloWrestling APIs, which now restrict access to previously public historical results. Demo mode uses an entirely fictional, reproducible wrestling league to demonstrate the same analytics. I am working on an independently maintained dataset.
 						</Text>
 					</div>
 

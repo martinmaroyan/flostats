@@ -1,3 +1,4 @@
+import { eventLink } from "../demo/eventLink";
 import { em, Text } from "@mantine/core";
 import { BoutObject } from "../api/types/objects/bout";
 import { useMemo } from "react";
@@ -101,7 +102,7 @@ export default function MatchesTable({ bouts, identityPersonId }: AthleteDataPro
 			enableResizing: true,
 			size: mobile ? 200 : 300,
 			Cell: ({ row, renderedCellValue }) => (
-				<Link to={`https://arena.flowrestling.org/event/${row.original.event?.id ?? ""}`} target="_blank" style={{ textDecoration: "none", textOverflow: "ellipsis", overflow: "hidden" }}>
+				<Link to={eventLink(row.original.event?.id)} target="_blank" style={{ textDecoration: "none", textOverflow: "ellipsis", overflow: "hidden" }}>
 					{renderedCellValue}
 				</Link>
 			),

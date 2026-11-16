@@ -1,3 +1,4 @@
+import { eventLink } from "../../demo/eventLink";
 import { Badge, Card, Group, Stack, Text, Title } from "@mantine/core";
 import { Link } from "react-router";
 import dayjs from "dayjs";
@@ -26,7 +27,7 @@ export default function HeadToHeadDisplay({ h2hMatches, athlete1Bouts, athlete1N
 	const athlete2Wins = h2hMatches.length - athlete1Wins;
 
 	return (
-		<Card w="100%" p="lg" bg="var(--mantine-color-dark-6)" bd="2px solid var(--mantine-color-blue-7)">
+		<Card w="100%" p="lg" bg="var(--mantine-color-body)" bd="2px solid var(--mantine-color-blue-7)">
 			<Stack gap="lg">
 				<Group justify="space-between" align="center">
 					<Title order={2}>Direct Head-to-Head Matches</Title>
@@ -36,7 +37,7 @@ export default function HeadToHeadDisplay({ h2hMatches, athlete1Bouts, athlete1N
 				</Group>
 
 				{/* Head-to-Head Record */}
-				<Card p="md" bg="var(--mantine-color-dark-7)">
+				<Card p="md" bg="var(--mantine-color-default)">
 					<Group justify="center" gap="xl">
 						<Stack gap="xs" align="center">
 							<Text fw={700} size="lg">{athlete1Name}</Text>
@@ -99,9 +100,9 @@ export default function HeadToHeadDisplay({ h2hMatches, athlete1Bouts, athlete1N
 							const date = dayjs(bout.attributes.goDateTime ?? bout.attributes.endDateTime);
 
 							return (
-								<Card key={idx} p="md" withBorder bg="var(--mantine-color-dark-8)">
-									<Group justify="start" wrap="nowrap">
-										<Group gap="md" wrap="nowrap">
+								<Card key={idx} p="md" withBorder bg="var(--mantine-color-default)">
+									<Group justify="start" wrap="wrap">
+										<Group gap="md" wrap="wrap">
 											<Badge
 												size="lg"
 												color={match.athlete1Won ? "green" : "red"}
@@ -112,7 +113,7 @@ export default function HeadToHeadDisplay({ h2hMatches, athlete1Bouts, athlete1N
 											<Text size="sm" c="dimmed">{date.format("MMMM D, YYYY")}</Text>
 										</Group>
 
-										<Group gap="md" wrap="nowrap">
+										<Group gap="md" wrap="wrap">
 											<Text fw={600}>
 												{bout.attributes.winType} {bout.attributes.result}
 											</Text>
@@ -122,7 +123,7 @@ export default function HeadToHeadDisplay({ h2hMatches, athlete1Bouts, athlete1N
 											</Text>
 											<Text c="dimmed">•</Text>
 											<Link
-												to={`https://arena.flowrestling.org/event/${event?.id}`}
+												to={eventLink(event?.id)}
 												target="_blank"
 												style={{ textDecoration: "none" }}
 											>

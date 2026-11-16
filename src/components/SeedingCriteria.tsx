@@ -23,7 +23,7 @@ type SeasonBlock = {
 	label: string;
 	/** Athlete's record in this season's postseason, if any. */
 	postseason: PersonRecord | null;
-	/** Athlete's record in the previous season's postseason — i.e. starting paperwork. */
+	/** Athlete's record in the previous season's postseason: i.e. starting paperwork. */
 	startingFrom: PersonRecord | null;
 	/** Whether previous-season index was available at all. */
 	hasPreviousIndex: boolean;
@@ -175,7 +175,7 @@ export default function SeedingCriteria({ bouts, identityPersonId }: AthleteData
 					<Tooltip
 						multiline
 						w={340}
-						label="MIAA Criteria #2 — Superior Record Against Strong Opposition. Each season's number is computed from starting points (previous-season postseason placement), wins this season against opponents who placed last season (Step 1, with sectional 2-cap), and a loss multiplier (Step 2)."
+						label="MIAA Criteria #2: Superior Record Against Strong Opposition. Each season's number is computed from starting points (previous-season postseason placement), wins this season against opponents who placed last season (Step 1, with sectional 2-cap), and a loss multiplier (Step 2)."
 					>
 						<IconInfoCircle size={20} />
 					</Tooltip>
@@ -226,23 +226,23 @@ function SeasonCard({ season, isFirst }: { season: SeasonBlock; isFirst: boolean
 					<Text size="sm" c="dimmed">No MA postseason placements this season.</Text>
 				)}
 
-				{/* Starting paperwork — previous season's postseason */}
+				{/* Starting paperwork: previous season's postseason */}
 				{season.startingFrom ? (
 					<Text size="sm">
 						<Text span fw={600}>Starting paperwork (from prior season): </Text>
 						<Text span>{season.startingFrom.placements[0]?.tournament}</Text>
-						<Text span c="dimmed"> — {season.startingFrom.placements[0]?.place && ordinal(season.startingFrom.placements[0].place)} = {season.startingFrom.highestPoints} pts</Text>
+						<Text span c="dimmed">: {season.startingFrom.placements[0]?.place && ordinal(season.startingFrom.placements[0].place)} = {season.startingFrom.highestPoints} pts</Text>
 					</Text>
 				) : season.hasPreviousIndex ? (
 					<Text size="sm" c="dimmed">No previous-season postseason paperwork.</Text>
 				) : (
-					<Text size="sm" c="dimmed">No prior-season placement index available — starting at 0.</Text>
+					<Text size="sm" c="dimmed">No prior-season placement index available: starting at 0.</Text>
 				)}
 
-				{/* Step 1 — wins against placers */}
+				{/* Step 1: wins against placers */}
 				{c.countedWins.length > 0 ? (
 					<Stack gap={4}>
-						<Text fw={600} size="sm">Step 1 — wins against opponents with prior-season paperwork ({c.countedWins.length})</Text>
+						<Text fw={600} size="sm">Step 1: wins against opponents with prior-season paperwork ({c.countedWins.length})</Text>
 						<Table striped withTableBorder withColumnBorders highlightOnHover>
 							<Table.Thead>
 								<Table.Tr>
@@ -255,7 +255,7 @@ function SeasonCard({ season, isFirst }: { season: SeasonBlock; isFirst: boolean
 							<Table.Tbody>
 								{c.countedWins.map(w => (
 									<Table.Tr key={w.boutId}>
-										<Table.Td>{w.date?.slice(0, 10) ?? "—"}</Table.Td>
+										<Table.Td>{w.date?.slice(0, 10) ?? "N/A"}</Table.Td>
 										<Table.Td>{w.opponentName ?? w.opponentIdentityPersonId.slice(0, 8)}</Table.Td>
 										<Table.Td>{TOURNAMENT_LABELS[w.opponentHighestType]}</Table.Td>
 										<Table.Td fw={600}>{w.opponentHighestPoints}</Table.Td>
@@ -273,11 +273,11 @@ function SeasonCard({ season, isFirst }: { season: SeasonBlock; isFirst: boolean
 					<Text size="sm" c="dimmed">No wins this season counted toward Step 1.</Text>
 				) : null}
 
-				{/* Step 2 — losses */}
+				{/* Step 2: losses */}
 				{c.losses.length > 0 ? (
 					<Stack gap={4}>
 						<Text fw={600} size="sm">
-							Step 2 — losses: {c.strongLosses} to placer{c.strongLosses === 1 ? "" : "s"} (×0.020 each), {c.weakLosses} to non-placer{c.weakLosses === 1 ? "" : "s"} (×0.050 each)
+							Step 2: losses: {c.strongLosses} to placer{c.strongLosses === 1 ? "" : "s"} (×0.020 each), {c.weakLosses} to non-placer{c.weakLosses === 1 ? "" : "s"} (×0.050 each)
 						</Text>
 						<Text size="xs" c="dimmed">
 							Reduction: {(1 - c.lossMultiplier).toFixed(3)} → multiplier {c.lossMultiplier.toFixed(3)}
@@ -312,7 +312,7 @@ function PlacementList({ record }: { record: PersonRecord }) {
 					<Table.Tr key={`${p.tournament}-${i}`}>
 						<Table.Td>{p.tournament}</Table.Td>
 						<Table.Td>{TOURNAMENT_LABELS[p.type]}</Table.Td>
-						<Table.Td>{p.weightClass ?? "—"}</Table.Td>
+						<Table.Td>{p.weightClass ?? "N/A"}</Table.Td>
 						<Table.Td>{ordinal(p.place)}</Table.Td>
 						<Table.Td fw={600}>{p.points}</Table.Td>
 					</Table.Tr>

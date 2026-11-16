@@ -1,3 +1,4 @@
+import { eventLink } from "../../demo/eventLink";
 import React, { useMemo } from "react";
 import { Badge, Group, Stack, Text } from "@mantine/core";
 import { Link } from "react-router";
@@ -139,14 +140,14 @@ export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, a
 				display: "flex",
 				justifyContent: "center",
 				width: "100%",
-				backgroundColor: "var(--mantine-color-dark-7)",
+				backgroundColor: "var(--mantine-color-default)",
 			}
 		},
 		renderDetailPanel: ({ row }) => {
 			const opponent = row.original;
 
 			return (
-				<Stack gap="xs" pb="md" bg="var(--mantine-color-dark-7)">
+				<Stack gap="xs" pb="md" bg="var(--mantine-color-default)">
 					<Text fw={600} size="lg">Individual Matches</Text>
 
 					<Group align="center" grow>
@@ -173,7 +174,7 @@ export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, a
 								const date = dayjs(bout.attributes.goDateTime ?? bout.attributes.endDateTime);
 
 								return (
-									<Group key={idx} gap="xs" wrap="nowrap">
+									<Group key={idx} gap="xs" wrap="wrap">
 										<Badge color={boutData.isWin ? "green" : "red"} size="sm">
 											{boutData.isWin ? "W" : "L"}
 										</Badge>
@@ -184,7 +185,7 @@ export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, a
 										<Text size="sm">{weightClass?.attributes.name} {division?.attributes.measurementUnit}</Text>
 										<Text size="sm" c="dimmed">@</Text>
 										<Link
-											to={`https://arena.flowrestling.org/event/${event?.id}`}
+											to={eventLink(event?.id)}
 											target="_blank"
 											style={{ textDecoration: "none", fontSize: "0.875rem" }}
 										>
@@ -218,7 +219,7 @@ export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, a
 								const date = dayjs(bout.attributes.goDateTime ?? bout.attributes.endDateTime);
 
 								return (
-									<Group key={idx} gap="xs" wrap="nowrap">
+									<Group key={idx} gap="xs" wrap="wrap">
 										<Badge color={boutData.isWin ? "green" : "red"} size="sm">
 											{boutData.isWin ? "W" : "L"}
 										</Badge>
@@ -229,7 +230,7 @@ export default function CommonOpponentsTable({ commonOpponents, athlete1Bouts, a
 										<Text size="sm">{weightClass?.attributes.name} {division?.attributes.measurementUnit}</Text>
 										<Text size="sm" c="dimmed">@</Text>
 										<Link
-											to={`https://arena.flowrestling.org/event/${event?.id}`}
+											to={eventLink(event?.id)}
 											target="_blank"
 											style={{ textDecoration: "none", fontSize: "0.875rem" }}
 										>

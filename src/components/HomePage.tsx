@@ -1,3 +1,7 @@
+import { lazy, Suspense } from "react";
+import { isDemoMode } from "../demo/mode";
+import ServiceNotice from "./ServiceNotice";
+const DemoExplorer = lazy(() => import("../demo/DemoExplorer"));
 import {
 	TextInput,
 	Button,
@@ -25,7 +29,7 @@ import { useNavigate, Link } from "react-router";
 import { ID_REGEX } from "../utils/identity";
 import styles from "./HomePage.module.css";
 
-const RECENT_SEARCHES_KEY = "flostats_recent_searches";
+const recentSearchesKey = () => isDemoMode() ? "flostats_demo_recent_searches" : "flostats_recent_searches";
 const MAX_RECENT_SEARCHES = 5;
 
 type RecentSearch = {
@@ -35,7 +39,7 @@ type RecentSearch = {
 
 function getRecentSearches(): RecentSearch[] {
 	try {
-		const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+		const stored = localStorage.getItem(recentSearchesKey());
 		if (!stored) return [];
 		const parsed: unknown = JSON.parse(stored);
 		return Array.isArray(parsed) ? parsed.filter((entry: unknown): entry is RecentSearch =>
@@ -54,14 +58,14 @@ function saveRecentSearch(query: string): void {
 	searches.unshift({ query: trimmed, timestamp: Date.now() });
 
 	localStorage.setItem(
-		RECENT_SEARCHES_KEY,
+		recentSearchesKey(),
 		JSON.stringify(searches.slice(0, MAX_RECENT_SEARCHES))
 	);
 }
 
 function removeRecentSearch(query: string): RecentSearch[] {
 	const searches = getRecentSearches().filter(s => s.query !== query);
-	localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(searches));
+	localStorage.setItem(recentSearchesKey(), JSON.stringify(searches));
 	return searches;
 }
 
@@ -142,14 +146,16 @@ export default function HomePage() {
 	return (
 		<Stack gap="xl" className={styles.container}>
 			{/* Header Section */}
-			<Box className={styles.header}>
+			{!isDemoMode() && <Box className={styles.header}>
 				<Title order={1} ta="center" className={styles.title}>
 					FloStats
 				</Title>
 				<Text size="lg" c="dimmed" ta="center" className={styles.subtitle}>
 					Search for high school wrestlers and explore their match records, tournament results, and season statistics.
 				</Text>
-			</Box>
+			</Box>}
+
+			{isDemoMode() ? <Suspense fallback={<Text>Preparing the fictional league…</Text>}><DemoExplorer /></Suspense> : <ServiceNotice />}
 
 			{/* Search Section */}
 			<Paper className={styles.searchCard} p="xl" radius="md">
@@ -159,7 +165,8 @@ export default function HomePage() {
 						value={inputValue}
 						onChange={(e) => setInputValue(e.currentTarget.value)}
 						onKeyDown={handleKeyDown}
-						placeholder="Search by wrestler name"
+						aria-label="Search by wrestler name"
+						placeholder={isDemoMode() ? "Search fictional wrestlers by name" : "Search by wrestler name"}
 						size="lg"
 						leftSection={<IconSearch size={20} />}
 						rightSection={
@@ -247,7 +254,7 @@ export default function HomePage() {
 			)}
 
 			{/* Features Section */}
-			<Box className={styles.featuresSection}>
+			{!isDemoMode() && <Box className={styles.featuresSection}>
 				<Text size="sm" c="dimmed" mb="md" fw={500} ta="center">
 					What you can view
 				</Text>
@@ -275,10 +282,10 @@ export default function HomePage() {
 						</Paper>
 					))}
 				</Box>
-			</Box>
+			</Box>}
 
 			{/* Compare Button */}
-			<Box ta="center">
+			{!isDemoMode() && <Box ta="center">
 				<Button
 					component={Link}
 					to="/compare"
@@ -288,7 +295,7 @@ export default function HomePage() {
 				>
 					Compare Two Wrestlers
 				</Button>
-			</Box>
+			</Box>}
 		</Stack>
 	);
 }

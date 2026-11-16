@@ -1,8 +1,9 @@
+import { isDemoMode } from "../demo/mode";
 import { useSyncExternalStore } from "react";
 
 export type AliasGroup = string[];
 
-const STORAGE_KEY = "flostats.aliasGroups.v1";
+const storageKey = () => isDemoMode() ? "flostats.demo.aliasGroups.v1" : "flostats.aliasGroups.v1";
 
 /** Hardcoded alias groups for known FloWrestling identity splits.
  *  Built-in groups can't be unmerged via the UI. */
@@ -19,7 +20,7 @@ function notify() {
 
 function readUserGroups(): AliasGroup[] {
 	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
+		const raw = localStorage.getItem(storageKey());
 		if (!raw) return [];
 		const parsed = JSON.parse(raw) as unknown;
 		if (!Array.isArray(parsed)) return [];
@@ -36,7 +37,7 @@ function writeUserGroups(groups: AliasGroup[]): void {
 	const cleaned = groups
 		.map(g => Array.from(new Set(g)).sort())
 		.filter(g => g.length >= 2);
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+	localStorage.setItem(storageKey(), JSON.stringify(cleaned));
 	notify();
 }
 
@@ -73,7 +74,7 @@ function unionGroups(groups: AliasGroup[]): AliasGroup[] {
 
 /** All alias groups, with built-in and user-defined unioned together. */
 export function getAllGroups(): AliasGroup[] {
-	return unionGroups([...BUILT_IN_GROUPS, ...readUserGroups()]);
+	return unionGroups([...(isDemoMode() ? [] : BUILT_IN_GROUPS), ...readUserGroups()]);
 }
 
 export function getAliasGroup(id: string): AliasGroup | null {
@@ -97,7 +98,7 @@ export function getCanonicalId(id: string): string {
 }
 
 export function isBuiltInGroup(group: AliasGroup): boolean {
-	return BUILT_IN_GROUPS.some(b => b.length === group.length && b.every(id => group.includes(id)));
+	return !isDemoMode() && BUILT_IN_GROUPS.some(b => b.length === group.length && b.every(id => group.includes(id)));
 }
 
 export function mergeIds(ids: string[]): void {
@@ -133,7 +134,7 @@ export function deleteGroup(group: AliasGroup): void {
 function subscribe(cb: () => void): () => void {
 	subscribers.add(cb);
 	const onStorage = (e: StorageEvent) => {
-		if (e.key === STORAGE_KEY) cb();
+		if (e.key === storageKey()) cb();
 	};
 	window.addEventListener("storage", onStorage);
 	return () => {

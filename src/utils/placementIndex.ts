@@ -1,3 +1,4 @@
+import { isDemoMode } from "../demo/mode";
 import { MaTournamentType } from "./seedingCriteria";
 import { expandToAliases } from "./aliases";
 
@@ -34,6 +35,7 @@ let manifestCache: Promise<Manifest> | null = null;
 const BASE = `${import.meta.env.BASE_URL}seeding`;
 
 export function loadManifest(): Promise<Manifest> {
+	if (isDemoMode()) return import("../demo/provider").then(({ getDemoDataset }) => ({ indexes: [...getDemoDataset().indexes.values()].map(({ year, personCount, builtAt }) => ({ year, personCount, builtAt })) }));
 	if (!manifestCache) {
 		manifestCache = fetch(`${BASE}/manifest.json`).then(r => {
 			if (!r.ok) throw new Error(`manifest fetch failed: ${r.status}`);
@@ -44,6 +46,11 @@ export function loadManifest(): Promise<Manifest> {
 }
 
 export function loadPlacementIndex(year: number): Promise<PlacementIndex> {
+	if (isDemoMode()) return import("../demo/provider").then(({ getDemoDataset }) => {
+		const index = getDemoDataset().indexes.get(year);
+		if (!index) throw new Error(`No synthetic placement index for ${year}`);
+		return index;
+	});
 	let p = indexCache.get(year);
 	if (!p) {
 		p = fetch(`${BASE}/${year}.json`).then(r => {

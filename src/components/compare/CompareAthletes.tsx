@@ -1,6 +1,8 @@
+import { siteBase } from "../../demo/mode";
+import DataError from "../DataError";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { Alert, Card, Group, Overlay, Stack, Text, Title } from "@mantine/core";
+import { Card, SimpleGrid, Overlay, Stack, Text, Title } from "@mantine/core";
 import { Helmet } from "react-helmet-async";
 
 import { ProgressCoordinator } from "../../utils/ProgressCoordinator";
@@ -108,7 +110,7 @@ export default function CompareAthletes() {
 
 	return (
 		<Stack w="100%" align="center" p="md">
-			{loadError && <Alert color="red" title="Unable to compare wrestlers">{loadError}</Alert>}
+			{loadError && <DataError title="Unable to compare wrestlers" message={loadError} />}
 			{athlete1Info && athlete2Info && (
 				<Helmet>
 					<title>{athlete1Info.name} vs {athlete2Info.name} - Head-to-Head Comparison | FloStats</title>
@@ -124,11 +126,11 @@ export default function CompareAthletes() {
 								: ""
 						}View detailed statistics, match history, and performance comparison.`}
 					/>
-					<link rel="canonical" href={`https://flostats.com/compare?athlete1=${athlete1Id}&athlete2=${athlete2Id}`} />
+					<link rel="canonical" href={`${siteBase()}/compare?athlete1=${athlete1Id}&athlete2=${athlete2Id}`} />
 
 					{/* Open Graph */}
 					<meta property="og:type" content="website" />
-					<meta property="og:url" content={`https://flostats.com/compare?athlete1=${athlete1Id}&athlete2=${athlete2Id}`} />
+					<meta property="og:url" content={`${siteBase()}/compare?athlete1=${athlete1Id}&athlete2=${athlete2Id}`} />
 					<meta property="og:title" content={`${athlete1Info.name} vs ${athlete2Info.name} - Wrestling Comparison | FloStats`} />
 					<meta
 						property="og:description"
@@ -145,7 +147,7 @@ export default function CompareAthletes() {
 
 					{/* Twitter */}
 					<meta property="twitter:card" content="summary" />
-					<meta property="twitter:url" content={`https://flostats.com/compare?athlete1=${athlete1Id}&athlete2=${athlete2Id}`} />
+					<meta property="twitter:url" content={`${siteBase()}/compare?athlete1=${athlete1Id}&athlete2=${athlete2Id}`} />
 					<meta property="twitter:title" content={`${athlete1Info.name} vs ${athlete2Info.name} | FloStats`} />
 					<meta
 						property="twitter:description"
@@ -167,7 +169,7 @@ export default function CompareAthletes() {
 
 			{/* Athlete Info Cards */}
 			{athlete1Info && athlete2Info && (
-				<Group align="start" w="100%" grow>
+				<SimpleGrid cols={{ base: 1, sm: 2 }} w="100%">
 					<GeneralInfoDisplay
 						info={athlete1Info}
 						setIgnoredTeams={() => {}}
@@ -180,7 +182,7 @@ export default function CompareAthletes() {
 						reset={false}
 						setReset={() => {}}
 					/>
-				</Group>
+				</SimpleGrid>
 			)}
 
 			{/* Head-to-Head Matches */}

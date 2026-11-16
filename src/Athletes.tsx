@@ -1,5 +1,7 @@
+import { siteBase } from "./demo/mode";
+import DataError from "./components/DataError";
 import React from "react";
-import { Alert, Anchor, Badge, Center, Checkbox, Group, Stack, Tooltip } from "@mantine/core";
+import { Anchor, Badge, Center, Checkbox, Group, Stack, Tooltip } from "@mantine/core";
 import { IconLink } from "@tabler/icons-react";
 import AthleteLoadingPanel, { LoadCounters } from "./components/AthleteLoadingPanel";
 import { nprogress } from "@mantine/nprogress";
@@ -317,7 +319,7 @@ export default function Athletes() {
 
 	return (
 		<Stack w="100%" align="center">
-			{loadError && <Alert color="red" title="Unable to load athlete">{loadError}</Alert>}
+			{loadError && <DataError title="Unable to load athlete" message={loadError} />}
 			{basicInfo && athleteStats && (
 				<Helmet>
 					<title>{basicInfo.name} - Wrestling Stats & Match History | FloStats</title>
@@ -325,11 +327,11 @@ export default function Athletes() {
 						name="description"
 						content={`${basicInfo.name}'s complete wrestling record: ${athleteStats.wins}-${athleteStats.losses} (${athleteStats.winPercentage}% win rate) with ${athleteStats.pins} pins. View detailed match history, tournament placements, and career statistics.`}
 					/>
-					<link rel="canonical" href={`https://flostats.com/athletes/${id}`} />
+					<link rel="canonical" href={`${siteBase()}/athletes/${id}`} />
 
 					{/* Open Graph */}
 					<meta property="og:type" content="profile" />
-					<meta property="og:url" content={`https://flostats.com/athletes/${id}`} />
+					<meta property="og:url" content={`${siteBase()}/athletes/${id}`} />
 					<meta property="og:title" content={`${basicInfo.name} - Wrestling Stats & Match History | FloStats`} />
 					<meta
 						property="og:description"
@@ -338,7 +340,7 @@ export default function Athletes() {
 
 					{/* Twitter */}
 					<meta property="twitter:card" content="summary" />
-					<meta property="twitter:url" content={`https://flostats.com/athletes/${id}`} />
+					<meta property="twitter:url" content={`${siteBase()}/athletes/${id}`} />
 					<meta property="twitter:title" content={`${basicInfo.name} - Wrestling Stats | FloStats`} />
 					<meta
 						property="twitter:description"
@@ -359,8 +361,8 @@ export default function Athletes() {
 								"name": team.attributes.name,
 								"sport": "Wrestling"
 							})),
-							"url": `https://flostats.com/athletes/${id}`,
-							"sameAs": `https://arena.flowrestling.org/people/${id}`
+							"url": `${siteBase()}/athletes/${id}`,
+							"sameAs": siteBase().endsWith("/demo") ? undefined : `https://arena.flowrestling.org/people/${id}`
 						})}
 					</script>
 				</Helmet>

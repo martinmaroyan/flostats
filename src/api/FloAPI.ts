@@ -1,3 +1,4 @@
+import { isDemoMode } from "../demo/mode";
 import { BaseResponse, BoutsResponse, NodeResult, SearchResultPerson, SearchResultPersonUseOfp, SearchResults, WrestlersResponse } from "./types/responses";
 import { BoutsIncludeString, FloObject, FloObjectTypeString, UUID, WrestlersIncludeString } from "./types/types";
 import { Relationship, RelationshipToBout, RelationshipToWrestler } from "./types/relationships";
@@ -12,12 +13,15 @@ export type FetchConfig = {
 
 export type SearchResultsTyped<O extends boolean> = O extends true ? SearchResults<SearchResultPersonUseOfp> : SearchResults<SearchResultPerson>;
 
+export const LIVE_DATA_UNAVAILABLE = "FloWrestling has restricted access to previously public historical results (401 Unauthorized). Live data is currently unavailable. Explore the interactive demo using fictional records while I work on an independently maintained dataset.";
+
 export default class FloAPI {
 	public static searchByName<T extends boolean>(name: string, { limit, page, onProgress, useOfp }: { limit: number, page: number, onProgress: (v: number) => void, useOfp: T }): Promise<SearchResultsTyped<T>> {
 		return this.fetchWithProgress<SearchResultsTyped<T>>(`https://api.flowrestling.org/api/experiences/web/legacy-core/search?site_id=2&version=1.33.2&limit=${limit}&view=global-search-web&fields=data%3C1%3E&q=${encodeURIComponent(name)}&page=${page}&type=person` + (useOfp ? "&useOfp=true" : ""), onProgress);
 	}
 
 	public static fetchWithProgress<T>(url: string, onProgress?: (progress: number) => void): Promise<T> {
+		if (isDemoMode()) return import("../demo/provider").then(provider => provider.demoRequest<T>(url, onProgress));
 		return new Promise((resolve, reject) => {
 			const xhr = new XMLHttpRequest();
 			xhr.open("GET", url, true);
@@ -38,7 +42,7 @@ export default class FloAPI {
 			});
 			xhr.addEventListener("load", () => {
 				if (xhr.status < 200 || xhr.status >= 300) {
-					reject(new Error(`Request failed (${xhr.status})`));
+					reject(new Error(xhr.status === 401 ? LIVE_DATA_UNAVAILABLE : `Request failed (${xhr.status})`));
 					return;
 				}
 				try {

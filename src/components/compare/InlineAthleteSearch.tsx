@@ -1,3 +1,4 @@
+import DataError from "../DataError";
 import { useState, useEffect } from "react";
 import {
 	TextInput,
@@ -31,6 +32,7 @@ export default function InlineAthleteSearch({
 	onAthleteSelect,
 	label,
 }: Props) {
+	const [loadError, setLoadError] = useState<string | null>(null);
 	const [isSearching, setIsSearching] = useState(false);
 	const [searchResults, setSearchResults] = useState<SearchResultPerson[]>([]);
 	const [showResults, setShowResults] = useState(false);
@@ -42,6 +44,7 @@ export default function InlineAthleteSearch({
 	useEffect(() => {
 		let cancelled = false;
 		setIsSearching(false);
+		setLoadError(null);
 		if (!debouncedQuery || debouncedQuery.length < 2) {
 			setSearchResults([]);
 			setShowResults(false);
@@ -75,7 +78,7 @@ export default function InlineAthleteSearch({
 
 				if (!cancelled) setSearchResults(results.data || []);
 			} catch (error) {
-				console.error("Search failed:", error);
+				if (!cancelled) setLoadError(error instanceof Error ? error.message : "Search failed");
 				if (!cancelled) setSearchResults([]);
 			} finally {
 				if (!cancelled) setIsSearching(false);
@@ -116,6 +119,7 @@ export default function InlineAthleteSearch({
 
 	return (
 		<Stack gap="sm">
+			{loadError && <DataError title="Search unavailable" message={loadError} />}
 			<Popover
 				opened={showResults && (isSearching || searchResults.length > 0) && !selectedId}
 				position="bottom-start"
@@ -165,7 +169,7 @@ export default function InlineAthleteSearch({
 									style={{ cursor: "pointer" }}
 									onClick={() => handleResultClick(result)}
 									withBorder
-									bg="var(--mantine-color-dark-6)"
+									bg="var(--mantine-color-default)"
 								>
 									<Stack gap="xs">
 										<Group justify="space-between">

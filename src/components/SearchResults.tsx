@@ -1,9 +1,11 @@
+import { siteBase } from "../demo/mode";
+import DataError from "./DataError";
 import React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import FloAPI, { SearchResultsTyped } from "../api/FloAPI";
 import { ProgressCoordinator } from "../utils/ProgressCoordinator";
 import { NodeResult, SearchResultPersonUseOfp } from "../api/types/responses";
-import { Alert, Badge, Button, Card, Checkbox, Group, Pagination, Skeleton, Stack, Text, Title, Tooltip } from "@mantine/core";
+import { Badge, Button, Card, Checkbox, Group, Pagination, Skeleton, Stack, Text, Title, Tooltip } from "@mantine/core";
 import dayjs from "dayjs";
 import { Helmet } from "react-helmet-async";
 
@@ -118,7 +120,7 @@ export default function SearchResultsPage() {
 
 	return (
 		<Stack>
-			{loadError && <Alert color="red" title="Search failed">{loadError}</Alert>}
+			{loadError && <DataError title="Search failed" message={loadError} />}
 			{search && (
 				<Helmet>
 					<title>{search} - Wrestler Search Results | FloStats</title>
@@ -126,11 +128,11 @@ export default function SearchResultsPage() {
 						name="description"
 						content={`Search results for "${search}" - Find wrestlers and view their complete match history, statistics, and career records on FloStats.`}
 					/>
-					<link rel="canonical" href={`https://flostats.com/search?q=${encodeURIComponent(search)}&page=${searchParams.get("page") || "1"}`} />
+					<link rel="canonical" href={`${siteBase()}/search?q=${encodeURIComponent(search)}&page=${searchParams.get("page") || "1"}`} />
 
 					{/* Open Graph */}
 					<meta property="og:type" content="website" />
-					<meta property="og:url" content={`https://flostats.com/search?q=${encodeURIComponent(search)}`} />
+					<meta property="og:url" content={`${siteBase()}/search?q=${encodeURIComponent(search)}`} />
 					<meta property="og:title" content={`${search} - Wrestler Search Results | FloStats`} />
 					<meta
 						property="og:description"
@@ -139,7 +141,7 @@ export default function SearchResultsPage() {
 
 					{/* Twitter */}
 					<meta property="twitter:card" content="summary" />
-					<meta property="twitter:url" content={`https://flostats.com/search?q=${encodeURIComponent(search)}`} />
+					<meta property="twitter:url" content={`${siteBase()}/search?q=${encodeURIComponent(search)}`} />
 					<meta property="twitter:title" content={`${search} - Wrestler Search | FloStats`} />
 					<meta
 						property="twitter:description"

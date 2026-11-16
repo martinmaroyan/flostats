@@ -12,9 +12,7 @@ import {
 import FloAPI from "../api/FloAPI";
 import { EventObject } from "../api/types/objects/event";
 import { WeightClassObject } from "../api/types/objects/weightClass";
-import { FloObject } from "../api/types/types";
-import { WrestlerObject } from "../api/types/objects/wrestler";
-import { WrestlersResponse } from "../api/types/responses";
+import type { AthleteWrestlers } from "../utils/athleteData";
 import { ChartTooltip } from "@mantine/charts";
 import { ContentType } from "recharts/types/component/Tooltip";
 import { Stack, Title } from "@mantine/core";
@@ -23,7 +21,7 @@ import dayjs from "dayjs";
 
 type WeightChartProps = {
 	h: number;
-	data?: WrestlersResponse<void, Exclude<FloObject, WrestlerObject>> | null;
+	data?: AthleteWrestlers | null;
 	startDate?: Date | null;
 	endDate?: Date | null;
 }

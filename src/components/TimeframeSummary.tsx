@@ -1,3 +1,4 @@
+import HighlightAndZoomLineChart from "./HighlightAndZoomLineChart";
 import { Card, Stack, Tabs, Title } from "@mantine/core";
 import Analysis from "./Analysis";
 import MatchesTable from "./MatchesTable";
@@ -14,6 +15,7 @@ export default function TimeframeSummary(props: AthleteDataProps & { title: stri
 						<Tabs.List justify="center">
 							<Tabs.Tab value="matches">Matches</Tabs.Tab>
 							<Tabs.Tab value="placements">Placements</Tabs.Tab>
+							<Tabs.Tab value="weight">Weight progression</Tabs.Tab>
 						</Tabs.List>
 						<Tabs.Panel value="matches" styles={{ panel: { overflow: "auto" } }}>
 							<MatchesTable {...props} />
@@ -21,6 +23,7 @@ export default function TimeframeSummary(props: AthleteDataProps & { title: stri
 						<Tabs.Panel value="placements">
 							<PlacementsDisplay {...props} />
 						</Tabs.Panel>
+						<Tabs.Panel value="weight" pt="md"><HighlightAndZoomLineChart h={340} data={props.wrestlers} /></Tabs.Panel>
 					</Tabs>
 				</Analysis>
 			</Stack>

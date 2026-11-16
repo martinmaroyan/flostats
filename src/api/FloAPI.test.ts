@@ -33,6 +33,12 @@ describe("API requests", () => {
 		MockXHR.last.emit("load");
 		await expect(response).rejects.toThrow("503");
 	});
+	it("explains a live 401 without substituting fictional records", async () => {
+		const response = FloAPI.fetchWithProgress("https://example.test");
+		MockXHR.last.status = 401;
+		MockXHR.last.emit("load");
+		await expect(response).rejects.toThrow("401 Unauthorized");
+	});
 	it("rejects malformed JSON rather than leaving a pending promise", async () => {
 		const response = FloAPI.fetchWithProgress("https://example.test");
 		MockXHR.last.responseText = "<html>error</html>";
