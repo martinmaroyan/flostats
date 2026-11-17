@@ -56,3 +56,42 @@ it("looks up the highest seeding placement across all aliases", () => {
 	expect(lookup(index, "a")?.highestPoints).toBe(25);
 	expect(lookup(index, "missing")).toBeNull();
 });
+
+it("identifies redacted athlete registrations by ID, on either side, without guessing opponents", async () => {
+	mergeIds(["athlete-a", "athlete-b"]);
+	const first = wrestler("first-event", "unused");
+	const second = wrestler("second-event", "unused");
+	const opponent = wrestler("unmapped-opponent", "unused");
+	for (const item of [first, second, opponent]) Reflect.deleteProperty(item.attributes, "identityPersonId");
+	// The same name must never be used as evidence that an opponent is the athlete.
+	opponent.attributes.fullName = first.attributes.fullName;
+	vi.spyOn(FloAPI, "fetchAllWrestlers").mockImplementation(id => Promise.resolve({
+		data: [structuredClone(id === "athlete-a" ? first : second)], included: [], meta: { total: 1 },
+	} as unknown as AthleteWrestlers));
+	vi.spyOn(FloAPI, "fetchAllBouts").mockImplementation(id => {
+		const response = id === "athlete-a" ? bouts(first, opponent) : bouts(opponent, second);
+		response.data[0].id = id;
+		response.data[0].attributes.winnerWrestlerId = id === "athlete-a" ? first.id : opponent.id;
+		return Promise.resolve(structuredClone(response));
+	});
+	const merged = await fetchMergedAthleteData("athlete-b");
+	for (const registration of merged.wrestlers.data) expect(registration.attributes.identityPersonId).toBe("athlete-a");
+	for (const registration of merged.bouts.included.filter(item => item.type === "wrestler")) {
+		expect(registration.attributes.identityPersonId).toBe(registration.id === opponent.id ? undefined : "athlete-a");
+	}
+	const winners = merged.bouts.data.map(bout => FloAPI.findIncludedObjectById<WrestlerObject>(bout.attributes.winnerWrestlerId, "wrestler", merged.bouts));
+	expect(winners.map(winner => winner?.attributes.identityPersonId)).toEqual(["athlete-a", undefined]);
+});
+
+it("joins a registration missing from bout expansions without assigning unrelated wrestlers", async () => {
+	const registration = wrestler("registration", "unused");
+	Reflect.deleteProperty(registration.attributes, "identityPersonId");
+	const opponent = wrestler("other", "opponent");
+	const response = bouts(registration, opponent);
+	response.included = [opponent];
+	vi.spyOn(FloAPI, "fetchAllWrestlers").mockResolvedValue({ data: [registration], included: [], meta: { total: 1 } } as unknown as AthleteWrestlers);
+	vi.spyOn(FloAPI, "fetchAllBouts").mockResolvedValue(response);
+	const merged = await fetchMergedAthleteData("athlete");
+	expect(merged.bouts.included.find(item => item.id === registration.id)).toMatchObject({ attributes: { identityPersonId: "athlete" } });
+	expect(opponent.attributes.identityPersonId).toBe("opponent");
+});

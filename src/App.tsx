@@ -5,6 +5,7 @@ import { Center, Loader } from "@mantine/core";
 import Layout from "./components/Layout";
 import HomePage from "./components/HomePage";
 
+const ConnectionTest = lazy(() => import("./components/ConnectionTest"));
 const DemoEvent = lazy(() => import("./demo/DemoEvent"));
 const Athletes = lazy(() => import("./Athletes"));
 const SearchResultsPage = lazy(() => import("./components/SearchResults"));
@@ -24,6 +25,7 @@ export default function App() {
 						<Route path="/athletes/:id" element={<Athletes />} />
 						<Route path="/teams/:id" element={<Athletes />} />
 						<Route path="/compare" element={<CompareAthletes />} />
+						{!isDemoMode() && <Route path="/connection-test" element={<ConnectionTest />} />}
 						{isDemoMode() && <Route path="/events/:id" element={<DemoEvent />} />}
 					</Routes>
 				</Suspense>

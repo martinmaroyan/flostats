@@ -150,3 +150,24 @@ Updated:
 The pre-existing uncommitted Wrangler dependency changes in `package.json`,
 `pnpm-lock.yaml`, and `pnpm-workspace.yaml` are preserved. This implementation
 adds no dependencies.
+
+### Browser session prototype
+
+Run `pnpm dev` and open `/connection-test` (normally
+`http://localhost:5173/connection-test`). Open the FloWrestling login link in the
+same browser profile, sign in, return, and click **Test with browser cookies**.
+Use **Compare without cookies** as a control. Each click sends at most two direct
+API requests, requesting one registration and one bout, spaced two seconds apart;
+there is no pagination or automatic retry. Results remain in page memory.
+
+This diagnostic uses actual browser fetches with `credentials: "include"` or
+`"omit"`; it neither imports HAR cookies nor uses a proxy. The ordinary profile
+API client is unchanged. A readable 200 with credentials and 401 without them
+supports this approach. Browser-hidden failures cannot reliably distinguish CORS,
+network errors, and cookie restrictions; inspect DevTools. Localhost and preview
+origins can behave differently from `https://flostats.com`, so testing the deployed
+origin is still necessary. The prototype does not automatically detect login or
+refresh sessions and does not collect login credentials.
+
+Browser regression test (mocked APIs):
+`pnpm build && pnpm exec playwright test e2e/connection.spec.ts --workers=2`.
