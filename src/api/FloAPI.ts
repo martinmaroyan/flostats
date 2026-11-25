@@ -79,10 +79,11 @@ export default class FloAPI {
 		const response = await fetch(url);
 		if (!response.ok) throw new Error("The archive is temporarily unavailable. Please try again later.");
 		const state = await response.json() as { state: string; linkedRegistrations: number };
-		if (state.linkedRegistrations > 0 || state.state === "complete") return true;
+		if (state.state === "complete" || (state.linkedRegistrations > 0 && state.state !== "evidence_ready")) return true;
 		const queued = await fetch(url, { method: "POST" });
 		if (!queued.ok) throw new Error("The identity lookup queue is temporarily unavailable. Please try again later.");
-		return false;
+		const result = await queued.json() as { state: string; linkedRegistrations?: number };
+		return (result.linkedRegistrations ?? 0) > 0 || result.state === "complete";
 	}
 
 	public static fetchWithProgressTyped<O extends FloObject, R extends Relationship | void, I = Exclude<FloObject, O> | void>(url: string, onProgress?: (progress: number) => void): Promise<BaseResponse<O, R, I>> {
