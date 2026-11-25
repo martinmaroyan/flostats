@@ -19,10 +19,10 @@ type WeightChartProps = {
 }
 
 export default function WeightChart({ h = 400, data, startDate, endDate, chartProps }: WeightChartProps) {
-	const [dataMap, setDataMap] = React.useState<Map<number, { date: number, "Weight Class Max": number, "Exact Weight": number }>>(new Map());
+	const [dataMap, setDataMap] = React.useState<Map<number, { date: number, "Weight Class Max": number }>>(new Map());
 
 	useEffect(() => {
-		const next = new Map<number, { date: number; "Weight Class Max": number; "Exact Weight": number; event: string }>();
+		const next = new Map<number, { date: number; "Weight Class Max": number; event: string }>();
 		data?.data.forEach(wrestler => {
 			const event = FloAPI.findIncludedObjectById<EventObject>(wrestler.attributes.eventId, "event", data)?.attributes;
 			if (!event) return;
@@ -31,11 +31,10 @@ export default function WeightChart({ h = 400, data, startDate, endDate, chartPr
 			if (endDate && new Date(event.startDateTime) > endDate) return;
 
 			const weightClass = FloAPI.findIncludedObjectById<WeightClassObject>(wrestler.attributes.weightClassId, "weightClass", data)?.attributes;
-			if (weightClass) {
+			if (weightClass && Number.isFinite(weightClass.maxWeight) && weightClass.maxWeight > 0) {
 				const obj = {
 					date: new Date(event.startDateTime).getTime(),
 					"Weight Class Max": weightClass.maxWeight,
-					"Exact Weight": wrestler.attributes.exactWeight,
 					event: event.name,
 				};
 				next.set(obj.date, obj);
@@ -65,20 +64,14 @@ export default function WeightChart({ h = 400, data, startDate, endDate, chartPr
 							</Stack>
 						)}
 						payload={payload}
-						series={[
-							/*{ name: "Weight Class", color: "blue" },*/
-							{ name: "Exact Weight", color: "red" },
-						]}
+						series={[{ name: "Weight Class Max", color: "blue" }]}
 						valueFormatter={(v) => v + " lbs"}
 						showColor={true}
 					/>
 				)) as ContentType<string, string>,
 			}}
 			unit=" lbs"
-			series={[
-				/*{ name: "Weight Class Max", color: "blue" },*/
-				{ name: "Exact Weight", color: "red" },
-			]}
+			series={[{ name: "Weight Class Max", color: "blue" }]}
 			{...chartProps}
 		/>
 	);

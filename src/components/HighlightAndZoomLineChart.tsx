@@ -27,7 +27,7 @@ type WeightChartProps = {
 }
 
 export default function HighlightAndZoomLineChart(props: WeightChartProps) {
-	const [data, setData] = React.useState<{ date: number, "Weight Class": number, "Exact Weight": number }[]>([]);
+	const [data, setData] = React.useState<{ date: number, "Weight Class": number }[]>([]);
 	const [left, setLeft] = React.useState<string | number>("dataMin");
 	const [right, setRight] = React.useState<string | number>("dataMax");
 	const [refAreaLeft, setRefAreaLeft] = React.useState<string | number>("");
@@ -36,7 +36,7 @@ export default function HighlightAndZoomLineChart(props: WeightChartProps) {
 	const [bottom, setBottom] = React.useState<string | number>("dataMin-1");
 
 	useEffect(() => {
-		const result = new Map<number, { date: number; "Weight Class": number; "Exact Weight": number; event: string }>();
+		const result = new Map<number, { date: number; "Weight Class": number; event: string }>();
 		const response = props.data;
 		if (response) {
 			response.data.forEach(wrestler => {
@@ -48,11 +48,12 @@ export default function HighlightAndZoomLineChart(props: WeightChartProps) {
 
 				const weightClass = FloAPI.findIncludedObjectById<WeightClassObject>(wrestler.attributes.weightClassId, "weightClass", response)?.attributes;
 				if (weightClass) {
-
+					const labelWeight = Number(weightClass.name?.trim().split(/\s+/)[0]);
+					const weight = Number.isFinite(labelWeight) && labelWeight > 0 ? labelWeight : weightClass.maxWeight;
+					if (!Number.isFinite(weight) || weight <= 0) return;
 					const obj = {
 						date: new Date(event.startDateTime).getTime(),
-						"Weight Class": isNaN(weightClass.name.split(" ")[0] as unknown as number) ? weightClass.maxWeight : parseInt(weightClass.name.split(" ")[0]),
-						"Exact Weight": (wrestler.attributes.exactWeight ?? parseInt(weightClass.name.split(" ")[0])) || weightClass.maxWeight,
+						"Weight Class": weight,
 						event: event.name,
 					};
 					result.set(obj.date, obj);
@@ -68,8 +69,8 @@ export default function HighlightAndZoomLineChart(props: WeightChartProps) {
 		setTop("dataMax+10");
 	}, [props.data, props.startDate, props.endDate]);
 
-	const getAxisYDomain = (from: number, to: number, ref: "Exact Weight" | "Weight Class", offset: number) => {
-		const values = data.filter(point => point.date >= from && point.date <= to).map(point => point[ref]);
+	const getAxisYDomain = (from: number, to: number, offset: number) => {
+		const values = data.filter(point => point.date >= from && point.date <= to).map(point => point["Weight Class"]);
 		return values.length ? [Math.min(...values) - offset, Math.max(...values) + offset] : [0, 1];
 	};
 
@@ -93,8 +94,7 @@ export default function HighlightAndZoomLineChart(props: WeightChartProps) {
 		}
 
 		// yAxis domain
-		const [bottom, top] = getAxisYDomain(left as number, right as number, "Exact Weight", 1);
-		//const [bottom2, top2] = getAxisYDomain(refAreaLeft, refAreaRight, "Weight Class", 50);
+		const [bottom, top] = getAxisYDomain(left as number, right as number, 1);
 
 		setBottom(bottom);
 		setTop(top);
@@ -145,16 +145,12 @@ export default function HighlightAndZoomLineChart(props: WeightChartProps) {
 									</Stack>
 								)}
 								payload={payload}
-								series={[
-									/*{ name: "Weight Class", color: "blue" },*/
-									{ name: "Exact Weight", color: "red" },
-								]}
+								series={[{ name: "Weight Class", color: "#82ca9d" }]}
 								valueFormatter={(v: number) => v + " lbs"}
 								showColor={true}
 							/>
 						)) as ContentType<string, string>
 					} />
-					<Line type="monotone" dataKey="Exact Weight" stroke="#8884d8" animationDuration={300} />
 					<Line type="linear" dataKey="Weight Class" stroke="#82ca9d" animationDuration={300} />
 
 					{refAreaLeft && refAreaRight ? (
