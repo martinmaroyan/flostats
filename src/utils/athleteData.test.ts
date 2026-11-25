@@ -39,6 +39,29 @@ it("deduplicates merged records and normalizes both athlete and opponent identit
 	expect(findHeadToHeadMatches(merged.bouts, "athlete-a", "opponent-a")).toHaveLength(1);
 });
 
+it("loads every available member of a three-profile permanent merge and preserves unresolved membership", async () => {
+	const ids = ["064ad7f4-8d16-4dd2-94b1-1dd1c45c3832", "849118d4-8dfb-496f-a2e8-484434d9a7cb", "8cfcfc17-011a-4fca-b571-7a5e42e6794f"];
+	const prepare = vi.spyOn(FloAPI, "prepareArchiveIdentity").mockImplementation(id => Promise.resolve(id !== ids[2]));
+	const opponent = wrestler("opponent", "other-person");
+	const loadWrestlers = vi.spyOn(FloAPI, "fetchAllWrestlers").mockImplementation(id => Promise.resolve({
+		data: [wrestler(`registration-${id}`, id)], included: [], meta: { total: 1 },
+	} as unknown as AthleteWrestlers));
+	vi.spyOn(FloAPI, "fetchAllBouts").mockImplementation(id => {
+		const result = bouts(wrestler(`registration-${id}`, id), opponent);
+		result.data[0].id = `match-${id}`;
+		return Promise.resolve(result);
+	});
+	const merged = await fetchMergedAthleteData(ids[1]);
+	expect(prepare.mock.calls.map(([id]) => id)).toEqual(ids);
+	expect(loadWrestlers.mock.calls.map(([id]) => id)).toEqual(ids.slice(0, 2));
+	expect(merged.aliases).toEqual(ids);
+	expect(merged.availableAliases).toEqual(ids.slice(0, 2));
+	expect(merged.canonicalId).toBe(ids[0]);
+	expect(merged.wrestlers.meta.total).toBe(2);
+	expect(merged.bouts.meta.total).toBe(2);
+	expect(merged.wrestlers.data.every(w => w.attributes.identityPersonId === ids[0])).toBe(true);
+});
+
 it("compares person IDs across different event registration IDs", () => {
 	const first = bouts(wrestler("registration-a", "person-a"), wrestler("opponent-registration-1", "opponent"));
 	const second = bouts(wrestler("opponent-registration-2", "opponent"), wrestler("registration-b", "person-b"));

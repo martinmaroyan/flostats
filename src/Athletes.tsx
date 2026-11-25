@@ -62,6 +62,7 @@ export default function Athletes() {
 
 	const [athleteId, setAthleteId] = React.useState<string | null>(null);
 	const [mergedAliases, setMergedAliases] = React.useState<string[]>([]);
+	const [availableAliasCount, setAvailableAliasCount] = React.useState(0);
 
 	const [startDate, setStartDate] = React.useState<Date | null>(null);
 	const [endDate, setEndDate] = React.useState<Date | null>(null);
@@ -222,7 +223,7 @@ export default function Athletes() {
 		void (async () => {
 			try {
 				nprogress.start();
-				const { aliases, canonicalId, wrestlers: wrestlersResponse, bouts: boutsResponse, basicInfo } = await fetchMergedAthleteData(
+				const { aliases, availableAliases, canonicalId, wrestlers: wrestlersResponse, bouts: boutsResponse, basicInfo } = await fetchMergedAthleteData(
 					id,
 					progress => {
 						if (cancelled) return;
@@ -241,6 +242,7 @@ export default function Athletes() {
 				setWrestlers(wrestlersResponse);
 				setBasicInfo(basicInfo);
 				setMergedAliases(aliases.length > 1 ? aliases : []);
+				setAvailableAliasCount(availableAliases.length);
 
 				document.title = `${basicInfo.name} - FloStats`;
 
@@ -374,7 +376,7 @@ export default function Athletes() {
 				</Center>
 			) : (
 				<>
-					{mergedAliases.length > 1 ? <MergedProfilesBadge aliases={mergedAliases} canonical={athleteId} /> : null}
+					{mergedAliases.length > 1 ? <MergedProfilesBadge aliases={mergedAliases} canonical={athleteId} availableCount={availableAliasCount} /> : null}
 					{basicInfo ? <GeneralInfoDisplay info={basicInfo} setIgnoredTeams={teams => setFilter({ ...filter, ignoredTeams: teams })} reset={false} setReset={() => {}} /> : null}
 					{athleteId && (
 						<Anchor
@@ -423,14 +425,14 @@ export default function Athletes() {
 	);
 }
 
-function MergedProfilesBadge({ aliases, canonical }: { aliases: string[]; canonical: string | null }) {
+function MergedProfilesBadge({ aliases, canonical, availableCount }: { aliases: string[]; canonical: string | null; availableCount: number }) {
 	const others = aliases.filter(a => a !== canonical);
-	const label = `Merged from ${aliases.length} FloWrestling profiles`;
+	const label = `Merged from ${aliases.length} FloWrestling profiles${availableCount < aliases.length ? ` (${availableCount} archived)` : ""}`;
 	return (
 		<Tooltip
 			multiline
 			w={360}
-			label={`This view combines data from ${aliases.length} separate FloWrestling identityPersonIds${others.length ? ` (other ids: ${others.map(o => o.slice(0, 8)).join(", ")})` : ""}.`}
+			label={`This group contains ${aliases.length} separate FloWrestling identityPersonIds${others.length ? ` (other ids: ${others.map(o => o.slice(0, 8)).join(", ")})` : ""}. ${availableCount < aliases.length ? `Archive data is currently available for ${availableCount} of these profiles.` : "All linked profiles contribute to this view."}`}
 		>
 			<Badge variant="light" color="blue" leftSection={<IconLink size={12} />} size="sm">
 				{label}

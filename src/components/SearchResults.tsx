@@ -64,7 +64,6 @@ export default function SearchResultsPage() {
 		setBroadResults(null);
 		setNarrowResults(null);
 		setExtraData(new Map());
-		setSelectedIds(new Set());
 		setLoadError(null);
 		setLoading(Boolean(search));
 		if (!search) return;
@@ -160,9 +159,15 @@ export default function SearchResultsPage() {
 				>
 					{mergeMode ? "Done" : "Manage Merges"}
 				</Button>
-				{mergeMode && selectedIds.size >= 2 && (
+				{mergeMode && selectedIds.size > 0 && (
+					<Button size="xs" variant="subtle" onClick={() => setSelectedIds(new Set())}>
+						Clear selection ({selectedIds.size})
+					</Button>
+				)}
+				{mergeMode && (
 					<Button
 						size="xs"
+						disabled={selectedIds.size < 2}
 						leftSection={<IconLink size={14} />}
 						onClick={() => {
 							mergeIds([...selectedIds]);

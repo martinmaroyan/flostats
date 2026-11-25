@@ -9,7 +9,11 @@ const storageKey = () => isDemoMode() ? "flostats.demo.aliasGroups.v1" : "flosta
  *  Built-in groups can't be unmerged via the UI. */
 const BUILT_IN_GROUPS: AliasGroup[] = [
 	// Martin Maroyan — split when changing schools.
-	["8cfcfc17-011a-4fca-b571-7a5e42e6794f", "064ad7f4-8d16-4dd2-94b1-1dd1c45c3832"],
+	[
+		"064ad7f4-8d16-4dd2-94b1-1dd1c45c3832",
+		"8cfcfc17-011a-4fca-b571-7a5e42e6794f",
+		"849118d4-8dfb-496f-a2e8-484434d9a7cb",
+	],
 ];
 
 const subscribers = new Set<() => void>();
@@ -94,7 +98,10 @@ export function expandToAliases(id: string): string[] {
  *  data from multiple profiles. */
 export function getCanonicalId(id: string): string {
 	const g = getAliasGroup(id);
-	return g ? g[0] : id;
+	if (!g) return id;
+	// Keep permanent profile URLs stable even when a user attaches a new alias.
+	const builtIn = !isDemoMode() && BUILT_IN_GROUPS.find(b => b.some(member => g.includes(member)));
+	return builtIn ? builtIn[0] : g[0];
 }
 
 export function isBuiltInGroup(group: AliasGroup): boolean {

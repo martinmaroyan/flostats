@@ -15,6 +15,7 @@ export type AthleteWrestlers = WrestlersResponse<AllWrestlerRelationships, Exclu
 
 export type AthleteDataBundle = {
 	aliases: string[];
+	availableAliases: string[];
 	canonicalId: string;
 	wrestlers: AthleteWrestlers;
 	bouts: AthleteBouts;
@@ -117,7 +118,8 @@ export async function fetchMergedAthleteData(
 	sortWrestlersByEventDate(wrestlers);
 
 	return {
-		aliases,
+		aliases: allAliases,
+		availableAliases: aliases,
 		canonicalId,
 		wrestlers,
 		bouts,

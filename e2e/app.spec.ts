@@ -88,6 +88,31 @@ test("home search, pagination, merges, and broad search preserve navigation", as
 	await expect(page.getByRole("heading", { name: "First Wrestler", exact: true })).toHaveCount(1);
 });
 
+test("merge selection persists across pages and supports three or more identities", async ({ page }) => {
+	await page.route("https://api.flowrestling.org/**", async route => {
+		const url = new URL(route.request().url());
+		const currentPage = Number(url.searchParams.get("page")) || 1;
+		const data = (currentPage === 1 ? [FIRST] : [ALIAS, SECOND]).map(person => ({
+			id: [FIRST, ALIAS, SECOND].indexOf(person) + 1,
+			node: { id: [FIRST, ALIAS, SECOND].indexOf(person) + 1 },
+			arena_person_identity_id: person, name: "Test Wrestler", title: "Test Wrestler", location: null,
+		}));
+		await route.fulfill({ json: { data, meta: { page: currentPage, pages: 2, max_limit: 1000 } } });
+	});
+	await page.goto("/search?q=Test");
+	await page.getByRole("button", { name: "Manage Merges" }).click();
+	await page.getByRole("checkbox").first().check();
+	await page.getByRole("button", { name: "2", exact: true }).click();
+	await expect(page.getByRole("checkbox")).toHaveCount(2);
+	await page.getByRole("checkbox").nth(0).check();
+	await page.getByRole("checkbox").nth(1).check();
+	await page.getByRole("button", { name: "Merge 3 selected" }).click();
+	await expect(page.getByRole("heading", { name: "Test Wrestler", exact: true })).toHaveCount(1);
+	await expect(page.getByText("11111111 + 22222222 + 33333333", { exact: true })).toBeVisible();
+	await page.reload();
+	await expect(page.getByRole("heading", { name: "Test Wrestler", exact: true })).toHaveCount(1);
+});
+
 test("athlete summaries retain end-date matches and team filtering works", async ({ page }) => {
 	await page.goto(`/athletes/${FIRST}`);
 	await expect(page.getByRole("heading", { name: "First Wrestler", exact: true })).toBeVisible();
