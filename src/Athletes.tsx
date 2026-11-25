@@ -27,7 +27,7 @@ import GeneralInfoDisplay, { BasicInfo } from "./components/GeneralInfoDisplay";
 import TimeframeSummary from "./components/TimeframeSummary";
 import SeedingCriteria from "./components/SeedingCriteria";
 import { useAliasGroups } from "./utils/aliases";
-import { fetchMergedAthleteData } from "./utils/athleteData";
+import { fetchMergedAthleteData, IdentityLookupStage } from "./utils/athleteData";
 import { isForfeit } from "./utils/boutResults";
 
 export type AthleteDataProps = {
@@ -43,6 +43,8 @@ export default function Athletes() {
 	const { id } = useParams();
 
 	const [downloading, setDownloading] = React.useState<boolean>(false);
+	const [lookupStage, setLookupStage] = React.useState<IdentityLookupStage>("checking");
+	const [loadAttempt, setLoadAttempt] = React.useState(0);
 	const [loadCounters, setLoadCounters] = React.useState<LoadCounters>({
 		wrestlersLoaded: 0,
 		wrestlersTotal: null,
@@ -205,7 +207,9 @@ export default function Athletes() {
 	React.useEffect(() => {
 		if (!id) return;
 		let cancelled = false;
+		const controller = new AbortController();
 		setDownloading(true);
+		setLookupStage("checking");
 		setLoadError(null);
 		setAthleteId(null);
 		setMergedAliases([]);
@@ -235,6 +239,7 @@ export default function Athletes() {
 							? { ...current, wrestlersLoaded: loaded, wrestlersTotal: total }
 							: { ...current, boutsLoaded: loaded, boutsTotal: total });
 					},
+					{ signal: controller.signal, onLookupStage: stage => { if (!cancelled) setLookupStage(stage); } },
 				);
 				if (cancelled) return;
 
@@ -287,9 +292,10 @@ export default function Athletes() {
 		})();
 		return () => {
 			cancelled = true;
+			controller.abort();
 			nprogress.complete();
 		};
-	}, [id, aliasGroups]);
+	}, [id, aliasGroups, loadAttempt]);
 
 	// Calculate stats for SEO meta description
 	const athleteStats = React.useMemo(() => {
@@ -319,7 +325,7 @@ export default function Athletes() {
 
 	return (
 		<Stack w="100%" align="center">
-			{loadError && <DataError title="Unable to load athlete" message={loadError} />}
+			{loadError && <DataError title="Unable to load athlete" message={loadError} onRetry={() => setLoadAttempt(n => n + 1)} />}
 			{basicInfo && athleteStats && (
 				<Helmet>
 					<title>{basicInfo.name} - Wrestling Stats & Match History | FloStats</title>
@@ -369,7 +375,7 @@ export default function Athletes() {
 			)}
 			{downloading ? (
 				<Center w="100%" mih="60vh">
-					<AthleteLoadingPanel counters={loadCounters} />
+					<AthleteLoadingPanel counters={loadCounters} lookupStage={lookupStage} />
 				</Center>
 			) : (
 				<>

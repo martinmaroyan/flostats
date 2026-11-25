@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import FloAPI from "../api/FloAPI";
 import { WrestlerObject } from "../api/types/objects/wrestler";
-import { AthleteBouts, AthleteWrestlers, fetchMergedAthleteData } from "./athleteData";
+import { AthleteBouts, AthleteWrestlers, fetchMergedAthleteData, IdentityLookupStage, IDENTITY_POLL_INTERVAL_MS, IDENTITY_WAIT_LIMIT_MS } from "./athleteData";
 import { mergeIds } from "./aliases";
 import { findCommonOpponents, findHeadToHeadMatches } from "./commonOpponents";
 import { lookup, PlacementIndex } from "./placementIndex";
@@ -60,6 +60,58 @@ it("loads every available member of a three-profile permanent merge and preserve
 	expect(merged.wrestlers.meta.total).toBe(2);
 	expect(merged.bouts.meta.total).toBe(2);
 	expect(merged.wrestlers.data.every(w => w.attributes.identityPersonId === ids[0])).toBe(true);
+});
+
+it("waits for a queued identity before loading registrations and bouts", async () => {
+	vi.useFakeTimers();
+	try {
+		const prepare = vi.spyOn(FloAPI, "prepareArchiveIdentity").mockResolvedValue(false);
+		const check = vi.spyOn(FloAPI, "checkArchiveIdentity").mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+		const registration = wrestler("registration", "athlete");
+		const load = vi.spyOn(FloAPI, "fetchAllWrestlers").mockResolvedValue({ data: [registration], included: [], meta: { total: 1 } } as unknown as AthleteWrestlers);
+		vi.spyOn(FloAPI, "fetchAllBouts").mockResolvedValue(bouts(registration, wrestler("opponent", "other")));
+		const stage = vi.fn<(stage: IdentityLookupStage) => void>();
+		const pending = fetchMergedAthleteData("athlete", undefined, undefined, { onLookupStage: stage });
+		await vi.advanceTimersByTimeAsync(IDENTITY_POLL_INTERVAL_MS);
+		expect(stage.mock.calls.map(([value]) => value)).toEqual(["checking", "waiting"]);
+		expect(load).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(IDENTITY_POLL_INTERVAL_MS);
+		expect((await pending).bouts.meta.total).toBe(1);
+		expect(stage.mock.calls.map(([value]) => value)).toEqual(["checking", "waiting", "loading"]);
+		expect(prepare).toHaveBeenCalledTimes(1);
+		expect(check).toHaveBeenCalledTimes(2);
+	} finally { vi.useRealTimers(); }
+});
+
+it("stops polling when the lookup times out", async () => {
+	vi.useFakeTimers();
+	try {
+		vi.spyOn(FloAPI, "prepareArchiveIdentity").mockResolvedValue(false);
+		const check = vi.spyOn(FloAPI, "checkArchiveIdentity").mockResolvedValue(false);
+		const pending = fetchMergedAthleteData("athlete");
+		const result = expect(pending).rejects.toThrow("still pending");
+		await vi.advanceTimersByTimeAsync(IDENTITY_WAIT_LIMIT_MS);
+		await result;
+		const count = check.mock.calls.length;
+		await vi.advanceTimersByTimeAsync(IDENTITY_POLL_INTERVAL_MS * 2);
+		expect(check).toHaveBeenCalledTimes(count);
+	} finally { vi.useRealTimers(); }
+});
+
+it("cancels pending lookups on navigation", async () => {
+	vi.useFakeTimers();
+	try {
+		vi.spyOn(FloAPI, "prepareArchiveIdentity").mockResolvedValue(false);
+		const check = vi.spyOn(FloAPI, "checkArchiveIdentity").mockResolvedValue(false);
+		const controller = new AbortController();
+		const pending = fetchMergedAthleteData("athlete", undefined, undefined, { signal: controller.signal });
+		const result = expect(pending).rejects.toMatchObject({ name: "AbortError" });
+		await vi.advanceTimersByTimeAsync(0);
+		controller.abort();
+		await result;
+		await vi.advanceTimersByTimeAsync(IDENTITY_POLL_INTERVAL_MS * 2);
+		expect(check).not.toHaveBeenCalled();
+	} finally { vi.useRealTimers(); }
 });
 
 it("compares person IDs across different event registration IDs", () => {

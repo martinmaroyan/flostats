@@ -16,6 +16,7 @@ export type SearchResultsTyped<O extends boolean> = O extends true ? SearchResul
 export const LIVE_DATA_UNAVAILABLE = "FloWrestling has restricted access to previously public historical results (401 Unauthorized). Live data is currently unavailable. Explore the interactive demo using fictional records while I work on an independently maintained dataset.";
 const archiveSetting: unknown = import.meta.env.VITE_FLOSTATS_API_URL;
 export const ARCHIVE_API = typeof archiveSetting === "string" ? archiveSetting.replace(/\/$/, "") : "";
+type IdentityResolution = { state: string; linkedRegistrations?: number };
 
 function archiveUrl(url: string): string {
 	if (!ARCHIVE_API) return url;
@@ -73,16 +74,27 @@ export default class FloAPI {
 		});
 	}
 
-	public static async prepareArchiveIdentity(id: string): Promise<boolean> {
-		if (!ARCHIVE_API || isDemoMode()) return true;
-		const url = ARCHIVE_API + "/resolution?identityPersonId=" + encodeURIComponent(id);
-		const response = await fetch(url);
+	private static async readIdentityResolution(id: string, signal?: AbortSignal): Promise<IdentityResolution> {
+		const response = await fetch(ARCHIVE_API + "/resolution?identityPersonId=" + encodeURIComponent(id), signal ? { signal } : undefined);
 		if (!response.ok) throw new Error("Match history is temporarily unavailable. Please try again later.");
-		const state = await response.json() as { state: string; linkedRegistrations: number };
-		if (state.state === "complete" || (state.linkedRegistrations > 0 && state.state !== "evidence_ready")) return true;
-		const queued = await fetch(url, { method: "POST" });
+		return await response.json() as IdentityResolution;
+	}
+
+	/** Read-only status check; polling must not enqueue the same lookup repeatedly. */
+	public static async checkArchiveIdentity(id: string, signal?: AbortSignal): Promise<boolean> {
+		if (!ARCHIVE_API || isDemoMode()) return true;
+		const result = await this.readIdentityResolution(id, signal);
+		return (result.linkedRegistrations ?? 0) > 0 || result.state === "complete";
+	}
+
+	public static async prepareArchiveIdentity(id: string, signal?: AbortSignal): Promise<boolean> {
+		if (!ARCHIVE_API || isDemoMode()) return true;
+		const state = await this.readIdentityResolution(id, signal);
+		if (state.state === "complete" || ((state.linkedRegistrations ?? 0) > 0 && state.state !== "evidence_ready")) return true;
+		const url = ARCHIVE_API + "/resolution?identityPersonId=" + encodeURIComponent(id);
+		const queued = await fetch(url, { method: "POST", ...(signal ? { signal } : {}) });
 		if (!queued.ok) throw new Error("The identity lookup queue is temporarily unavailable. Please try again later.");
-		const result = await queued.json() as { state: string; linkedRegistrations?: number };
+		const result = await queued.json() as IdentityResolution;
 		return (result.linkedRegistrations ?? 0) > 0 || result.state === "complete";
 	}
 

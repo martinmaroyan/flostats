@@ -4,6 +4,8 @@ const FIRST = "11111111-1111-4111-8111-111111111111";
 const ALIAS = "22222222-2222-4222-8222-222222222222";
 const SECOND = "33333333-3333-4333-8333-333333333333";
 const SHARED = "44444444-4444-4444-8444-444444444444";
+const MATCH_API = /^https:\/\/(?:floarena-api\.flowrestling\.org|api\.flostats\.com)\/(?:wrestlers|bouts)\//;
+const RESOLUTION_API = /^https:\/\/api\.flostats\.com\/resolution\?/;
 
 function registration(person: string) {
 	const name = person === SECOND ? "Second Wrestler" : person === SHARED ? "Shared Opponent" : "First Wrestler";
@@ -29,7 +31,8 @@ function athleteResponse(person: string, resource: string) {
 }
 
 async function mockAPI(page: Page) {
-	await page.route("https://floarena-api.flowrestling.org/**", async route => {
+	await page.route(RESOLUTION_API, route => route.fulfill({ json: { state: "complete", linkedRegistrations: 1 } }));
+	await page.route(MATCH_API, async route => {
 		const url = new URL(route.request().url());
 		await route.fulfill({ json: athleteResponse(url.searchParams.get("identityPersonId") ?? FIRST, url.pathname.includes("wrestlers") ? "wrestlers" : "bouts") });
 	});
@@ -151,10 +154,37 @@ test("comparison shows head-to-head matches and common opponents", async ({ page
 });
 
 test("failed API calls exit loading and show an error", async ({ page }) => {
-	await page.route("https://floarena-api.flowrestling.org/**", route => route.fulfill({ status: 503, body: "Unavailable" }));
+	await page.route(MATCH_API, route => route.fulfill({ status: 503, body: "Unavailable" }));
 	await page.goto(`/athletes/${FIRST}`);
 	await expect(page.getByRole("alert")).toContainText("503");
 	await expect(page.getByText("Loading athlete data", { exact: false })).toHaveCount(0);
+});
+
+test("queued identity shows its own loading stage and automatically opens the resolved profile", async ({ page }) => {
+	let gets = 0;
+	let posts = 0;
+	await page.route(RESOLUTION_API, async route => {
+		if (route.request().method() === "POST") {
+			posts++;
+			await route.fulfill({ status: 202, json: { state: "awaiting_source", linkedRegistrations: 0 } });
+			return;
+		}
+		gets++;
+		await route.fulfill({ json: gets === 1 ? { state: "unresolved", linkedRegistrations: 0 } : { state: "complete", linkedRegistrations: 1 } });
+	});
+	let loadedBeforeReady = false;
+	await page.route(MATCH_API, route => {
+		if (gets < 2) loadedBeforeReady = true;
+		return route.fallback();
+	});
+	await page.goto(`/athletes/${FIRST}`);
+	await expect(page.getByText("Waiting for identity lookup…", { exact: true })).toBeVisible();
+	await expect(page.getByRole("heading", { name: "Loading athlete data" })).toBeVisible();
+	await expect(page.getByRole("heading", { name: "First Wrestler", exact: true })).toBeVisible({ timeout: 15000 });
+	await expect(page.getByText("Waiting for identity lookup…", { exact: true })).toHaveCount(0);
+	expect(posts).toBe(1);
+	expect(gets).toBe(2);
+	expect(loadedBeforeReady).toBe(false);
 });
 
 test("search can recover after an API error", async ({ page }) => {
@@ -193,17 +223,17 @@ test("a delayed search cannot replace a newer query", async ({ page }) => {
 test("a delayed athlete load cannot replace a newly selected athlete", async ({ page }) => {
 	let release = () => {};
 	const gate = new Promise<void>(resolve => { release = resolve; });
-	await page.route("https://floarena-api.flowrestling.org/**", async route => {
+	await page.route(MATCH_API, async route => {
 		if (new URL(route.request().url()).searchParams.get("identityPersonId") === FIRST) await gate;
 		await route.fallback();
 	});
-	const pending = page.waitForRequest(request => new URL(request.url()).searchParams.get("identityPersonId") === FIRST);
+	const pending = page.waitForRequest(request => MATCH_API.test(request.url()) && new URL(request.url()).searchParams.get("identityPersonId") === FIRST);
 	await page.goto(`/athletes/${FIRST}`);
 	await pending;
 	await page.getByPlaceholder("Enter name or ID...").fill(SECOND);
 	await page.getByPlaceholder("Enter name or ID...").press("Enter");
 	await expect(page.getByRole("heading", { name: "Second Wrestler", exact: true })).toBeVisible();
-	const completed = page.waitForResponse(response => new URL(response.url()).searchParams.get("identityPersonId") === FIRST);
+	const completed = page.waitForResponse(response => MATCH_API.test(response.url()) && new URL(response.url()).searchParams.get("identityPersonId") === FIRST);
 	release();
 	await completed;
 	await expect(page.getByRole("heading", { name: "Second Wrestler", exact: true })).toBeVisible();

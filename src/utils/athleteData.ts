@@ -24,16 +24,64 @@ export type AthleteDataBundle = {
 
 type LoadCountCallback = (kind: "wrestlers" | "bouts", loaded: number, total: number) => void;
 type ProgressCallback = (progress: number) => void;
+export type IdentityLookupStage = "checking" | "waiting" | "loading";
+export const IDENTITY_POLL_INTERVAL_MS = 5_000;
+export const IDENTITY_WAIT_LIMIT_MS = 120_000;
+type AthleteLoadOptions = {
+	signal?: AbortSignal;
+	onLookupStage?: (stage: IdentityLookupStage) => void;
+};
+
+function pollDelay(ms: number, signal: AbortSignal): Promise<void> {
+	return new Promise((resolve, reject) => {
+		if (signal.aborted) { reject(signal.reason); return; }
+		const abort = () => { clearTimeout(timer); reject(signal.reason); };
+		const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, ms);
+		signal.addEventListener("abort", abort, { once: true });
+	});
+}
+
+async function resolveAvailableAliases(ids: string[], { signal, onLookupStage }: AthleteLoadOptions): Promise<string[]> {
+	const controller = new AbortController();
+	const abort = () => controller.abort(signal?.reason);
+	if (signal?.aborted) abort();
+	else signal?.addEventListener("abort", abort, { once: true });
+	const timeoutError = new Error("The identity lookup is still pending. Try again in a moment.");
+	const timeout = setTimeout(() => controller.abort(timeoutError), IDENTITY_WAIT_LIMIT_MS);
+	try {
+		controller.signal.throwIfAborted();
+		onLookupStage?.("checking");
+		let availability = await Promise.all(ids.map(id => FloAPI.prepareArchiveIdentity(id, controller.signal)));
+		// Don't hold an existing merged profile back because one of its other IDs is unresolved.
+		if (!availability.some(Boolean)) {
+			onLookupStage?.("waiting");
+			while (!availability.some(Boolean)) {
+				await pollDelay(IDENTITY_POLL_INTERVAL_MS, controller.signal);
+				availability = await Promise.all(ids.map(id => FloAPI.checkArchiveIdentity(id, controller.signal)));
+				controller.signal.throwIfAborted();
+			}
+		}
+		controller.signal.throwIfAborted();
+		onLookupStage?.("loading");
+		return ids.filter((_, index) => availability[index]);
+	} catch (error) {
+		if (controller.signal.aborted) throw controller.signal.reason;
+		throw error;
+	} finally {
+		clearTimeout(timeout);
+		signal?.removeEventListener("abort", abort);
+		controller.abort();
+	}
+}
 
 export async function fetchMergedAthleteData(
 	id: string,
 	onProgress?: ProgressCallback,
 	onLoadCount?: LoadCountCallback,
+	options: AthleteLoadOptions = {},
 ): Promise<AthleteDataBundle> {
 	const allAliases = expandToAliases(id);
-	const availability = await Promise.all(allAliases.map(alias => FloAPI.prepareArchiveIdentity(alias)));
-	const aliases = allAliases.filter((_, index) => availability[index]);
-	if (!aliases.length) throw new Error("Match history is not available for this athlete yet. A lookup has been requested.");
+	const aliases = await resolveAvailableAliases(allAliases, options);
 	const canonicalId = getCanonicalId(id);
 	const aliasSet = new Set(aliases);
 	const wrestlerCounts = new Map<string, { loaded: number; total: number }>();

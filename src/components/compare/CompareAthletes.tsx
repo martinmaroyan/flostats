@@ -2,7 +2,8 @@ import { siteBase } from "../../demo/mode";
 import DataError from "../DataError";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { Card, SimpleGrid, Overlay, Stack, Text, Title } from "@mantine/core";
+import { Card, SimpleGrid, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { IdentityLookupStatus } from "../AthleteLoadingPanel";
 import { Helmet } from "react-helmet-async";
 
 import { ProgressCoordinator } from "../../utils/ProgressCoordinator";
@@ -17,7 +18,7 @@ import GeneralInfoDisplay, { BasicInfo } from "../GeneralInfoDisplay";
 import ComparisonSummary from "./ComparisonSummary";
 import CommonOpponentsTable from "./CommonOpponentsTable";
 import HeadToHeadDisplay from "./HeadToHeadDisplay";
-import { fetchMergedAthleteData } from "../../utils/athleteData";
+import { fetchMergedAthleteData, IdentityLookupStage } from "../../utils/athleteData";
 import { getCanonicalId, useAliasGroups } from "../../utils/aliases";
 
 type Bouts = BoutsResponse<AllBoutRelationships, Exclude<FloObject, BoutObject>>;
@@ -32,6 +33,8 @@ export default function CompareAthletes() {
 	const [loadError, setLoadError] = useState<string | null>(null);
 
 	const [downloading, setDownloading] = useState(false);
+	const [lookupStages, setLookupStages] = useState<[IdentityLookupStage, IdentityLookupStage]>(["checking", "checking"]);
+	const [loadAttempt, setLoadAttempt] = useState(0);
 
 	// Athlete 1 data
 	const [athlete1Bouts, setAthlete1Bouts] = useState<Bouts | null>(null);
@@ -64,6 +67,7 @@ export default function CompareAthletes() {
 
 	useEffect(() => {
 		let cancelled = false;
+		const controller = new AbortController();
 		setAthlete1Bouts(null);
 		setAthlete2Bouts(null);
 		setAthlete1Info(null);
@@ -76,6 +80,10 @@ export default function CompareAthletes() {
 			return;
 		}
 		setDownloading(true);
+		setLookupStages(["checking", "checking"]);
+		const options = (index: 0 | 1) => ({ signal: controller.signal, onLookupStage: (stage: IdentityLookupStage) => {
+			if (!cancelled) setLookupStages(current => index === 0 ? [stage, current[1]] : [current[0], stage]);
+		} });
 
 		const progressCoordinator = new ProgressCoordinator(16);
 		progressCoordinator.registerOperation("athlete1", 0.5);
@@ -85,8 +93,8 @@ export default function CompareAthletes() {
 		void (async () => {
 			try {
 				const [athlete1, athlete2] = await Promise.all([
-					fetchMergedAthleteData(athlete1Id, progress => { if (!cancelled) progressCoordinator.updateOperation("athlete1", progress); }),
-					fetchMergedAthleteData(athlete2Id, progress => { if (!cancelled) progressCoordinator.updateOperation("athlete2", progress); }),
+					fetchMergedAthleteData(athlete1Id, progress => { if (!cancelled) progressCoordinator.updateOperation("athlete1", progress); }, undefined, options(0)),
+					fetchMergedAthleteData(athlete2Id, progress => { if (!cancelled) progressCoordinator.updateOperation("athlete2", progress); }, undefined, options(1)),
 				]);
 				if (cancelled) return;
 
@@ -102,15 +110,16 @@ export default function CompareAthletes() {
 			} catch (e) {
 				if (!cancelled) setLoadError(e instanceof Error ? e.message : "Unable to load comparison");
 			} finally {
+				controller.abort();
 				if (!cancelled) { setDownloading(false); progressCoordinator.complete(); }
 			}
 		})();
-		return () => { cancelled = true; progressCoordinator.complete(); };
-	}, [athlete1Id, athlete2Id, athlete1CanonicalId, athlete2CanonicalId, aliasGroups]);
+		return () => { cancelled = true; controller.abort(); progressCoordinator.complete(); };
+	}, [athlete1Id, athlete2Id, athlete1CanonicalId, athlete2CanonicalId, aliasGroups, loadAttempt]);
 
 	return (
 		<Stack w="100%" align="center" p="md">
-			{loadError && <DataError title="Unable to compare wrestlers" message={loadError} />}
+			{loadError && <DataError title="Unable to compare wrestlers" message={loadError} onRetry={athlete1CanonicalId !== athlete2CanonicalId ? () => setLoadAttempt(n => n + 1) : undefined} />}
 			{athlete1Info && athlete2Info && (
 				<Helmet>
 					<title>{athlete1Info.name} vs {athlete2Info.name} - Head-to-Head Comparison | FloStats</title>
@@ -160,9 +169,15 @@ export default function CompareAthletes() {
 				</Helmet>
 			)}
 
-			{downloading && <Overlay backgroundOpacity={0} blur={2} h="100%" fixed={true} />}
-
 			<Title order={1}>Wrestler Comparison</Title>
+			{downloading && <Card withBorder w={420} maw="100%" p="lg" radius="md" shadow="sm">
+				<Stack gap="md">
+					<Group gap="sm"><Loader size="sm" /><Title order={4}>Loading comparison</Title></Group>
+					<IdentityLookupStatus stage={lookupStages[0]} label="Athlete 1 identity lookup" />
+					<IdentityLookupStatus stage={lookupStages[1]} label="Athlete 2 identity lookup" />
+					{lookupStages.every(stage => stage === "loading") && <Text size="xs" c="dimmed" ta="center">Loading match histories…</Text>}
+				</Stack>
+			</Card>}
 
 			{/* Athlete Selection */}
 			{(!athlete1Id || !athlete2Id) && <AthleteSelector />}
