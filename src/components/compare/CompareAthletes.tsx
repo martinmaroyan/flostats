@@ -1,8 +1,9 @@
-import { siteBase } from "../../demo/mode";
+import { siteBase, isDemoMode } from "../../demo/mode";
+import { ARCHIVE_API } from "../../api/FloAPI";
 import DataError from "../DataError";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { Card, SimpleGrid, Overlay, Stack, Text, Title } from "@mantine/core";
+import { Alert, Card, SimpleGrid, Overlay, Stack, Text, Title } from "@mantine/core";
 import { Helmet } from "react-helmet-async";
 
 import { ProgressCoordinator } from "../../utils/ProgressCoordinator";
@@ -110,6 +111,7 @@ export default function CompareAthletes() {
 
 	return (
 		<Stack w="100%" align="center" p="md">
+			{ARCHIVE_API && !isDemoMode() && <Alert color="blue" w="100%">Comparisons use available archived results and verified identities. Missing matches or unresolved opponents can affect these results.</Alert>}
 			{loadError && <DataError title="Unable to compare wrestlers" message={loadError} />}
 			{athlete1Info && athlete2Info && (
 				<Helmet>

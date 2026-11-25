@@ -14,6 +14,19 @@ export type FetchConfig = {
 export type SearchResultsTyped<O extends boolean> = O extends true ? SearchResults<SearchResultPersonUseOfp> : SearchResults<SearchResultPerson>;
 
 export const LIVE_DATA_UNAVAILABLE = "FloWrestling has restricted access to previously public historical results (401 Unauthorized). Live data is currently unavailable. Explore the interactive demo using fictional records while I work on an independently maintained dataset.";
+const archiveSetting: unknown = import.meta.env.VITE_FLOSTATS_API_URL;
+export const ARCHIVE_API = typeof archiveSetting === "string" ? archiveSetting.replace(/\/$/, "") : "";
+
+function archiveUrl(url: string): string {
+	if (!ARCHIVE_API) return url;
+	const target = new URL(url);
+	if (target.hostname === "floarena-api.flowrestling.org" &&
+		["/wrestlers/", "/bouts/"].includes(target.pathname) &&
+		target.searchParams.has("identityPersonId")) {
+		return ARCHIVE_API + target.pathname + target.search;
+	}
+	return url;
+}
 
 export default class FloAPI {
 	public static searchByName<T extends boolean>(name: string, { limit, page, onProgress, useOfp }: { limit: number, page: number, onProgress: (v: number) => void, useOfp: T }): Promise<SearchResultsTyped<T>> {
@@ -24,7 +37,7 @@ export default class FloAPI {
 		if (isDemoMode()) return import("../demo/provider").then(provider => provider.demoRequest<T>(url, onProgress));
 		return new Promise((resolve, reject) => {
 			const xhr = new XMLHttpRequest();
-			xhr.open("GET", url, true);
+			xhr.open("GET", archiveUrl(url), true);
 			xhr.timeout = 30000;
 
 			// Track last reported progress to ensure monotonic updates
@@ -58,6 +71,18 @@ export default class FloAPI {
 			xhr.addEventListener("abort", () => reject(new Error("Network request was cancelled")));
 			xhr.send();
 		});
+	}
+
+	public static async prepareArchiveIdentity(id: string): Promise<boolean> {
+		if (!ARCHIVE_API || isDemoMode()) return true;
+		const url = ARCHIVE_API + "/resolution?identityPersonId=" + encodeURIComponent(id);
+		const response = await fetch(url);
+		if (!response.ok) throw new Error("The archive is temporarily unavailable. Please try again later.");
+		const state = await response.json() as { state: string; linkedRegistrations: number };
+		if (state.linkedRegistrations > 0 || state.state === "complete") return true;
+		const queued = await fetch(url, { method: "POST" });
+		if (!queued.ok) throw new Error("The identity lookup queue is temporarily unavailable. Please try again later.");
+		return false;
 	}
 
 	public static fetchWithProgressTyped<O extends FloObject, R extends Relationship | void, I = Exclude<FloObject, O> | void>(url: string, onProgress?: (progress: number) => void): Promise<BaseResponse<O, R, I>> {

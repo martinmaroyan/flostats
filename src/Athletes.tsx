@@ -1,7 +1,7 @@
-import { siteBase } from "./demo/mode";
+import { siteBase, isDemoMode } from "./demo/mode";
 import DataError from "./components/DataError";
 import React from "react";
-import { Anchor, Badge, Center, Checkbox, Group, Stack, Tooltip } from "@mantine/core";
+import { Alert, Anchor, Badge, Center, Checkbox, Group, Stack, Tooltip } from "@mantine/core";
 import { IconLink } from "@tabler/icons-react";
 import AthleteLoadingPanel, { LoadCounters } from "./components/AthleteLoadingPanel";
 import { nprogress } from "@mantine/nprogress";
@@ -9,7 +9,7 @@ import { Helmet } from "react-helmet-async";
 
 
 import { BoutsResponse, WrestlersResponse } from "./api/types/responses";
-import FloAPI from "./api/FloAPI";
+import FloAPI, { ARCHIVE_API } from "./api/FloAPI";
 import { EventObject } from "./api/types/objects/event";
 import { WrestlerObject } from "./api/types/objects/wrestler";
 import { FloObject } from "./api/types/types";
@@ -319,13 +319,14 @@ export default function Athletes() {
 
 	return (
 		<Stack w="100%" align="center">
+			{ARCHIVE_API && !isDemoMode() && <Alert color="blue" w="100%">Archived match history. Missing events or unresolved opponent identities can affect these statistics.</Alert>}
 			{loadError && <DataError title="Unable to load athlete" message={loadError} />}
 			{basicInfo && athleteStats && (
 				<Helmet>
 					<title>{basicInfo.name} - Wrestling Stats & Match History | FloStats</title>
 					<meta
 						name="description"
-						content={`${basicInfo.name}'s complete wrestling record: ${athleteStats.wins}-${athleteStats.losses} (${athleteStats.winPercentage}% win rate) with ${athleteStats.pins} pins. View detailed match history, tournament placements, and career statistics.`}
+						content={`${basicInfo.name}'s available wrestling record: ${athleteStats.wins}-${athleteStats.losses} (${athleteStats.winPercentage}% win rate) with ${athleteStats.pins} pins. View match history, tournament placements, and statistics.`}
 					/>
 					<link rel="canonical" href={`${siteBase()}/athletes/${id}`} />
 
@@ -335,7 +336,7 @@ export default function Athletes() {
 					<meta property="og:title" content={`${basicInfo.name} - Wrestling Stats & Match History | FloStats`} />
 					<meta
 						property="og:description"
-						content={`${basicInfo.name}'s complete wrestling record: ${athleteStats.wins}-${athleteStats.losses} (${athleteStats.winPercentage}% win rate) with ${athleteStats.pins} pins.`}
+						content={`${basicInfo.name}'s available wrestling record: ${athleteStats.wins}-${athleteStats.losses} (${athleteStats.winPercentage}% win rate) with ${athleteStats.pins} pins.`}
 					/>
 
 					{/* Twitter */}

@@ -1,7 +1,13 @@
 import { Alert, Button, Stack, Text } from "@mantine/core";
 import { IconInfoCircle, IconArrowRight } from "@tabler/icons-react";
+import { ARCHIVE_API } from "../api/FloAPI";
 
 export default function ServiceNotice() {
+	if (ARCHIVE_API) return (
+		<Alert icon={<IconInfoCircle size={22} />} title="Archived wrestling results" color="blue" radius="md" ta="left" role="note">
+			<Text size="sm">FloStats uses its historical archive for verified athletes. Some events and identities are still missing, so match history and comparisons may be incomplete.</Text>
+		</Alert>
+	);
 	return (
 		<Alert icon={<IconInfoCircle size={22} />} title="Live Data Temporarily Unavailable" color="blue" radius="md" ta="left" role="note">
 			<Stack gap="sm">

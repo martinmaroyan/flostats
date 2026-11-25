@@ -76,10 +76,11 @@ export default function MatchesTable({ bouts, identityPersonId }: AthleteDataPro
 				row.original.noOpponent ?
 					<Text fs={row.original.noOpponent ? "italic" : undefined} c={row.original.noOpponent ? "dimmed" : undefined}>
 						{renderedCellValue}
-					</Text> :
-					<Link target="_blank" to={`/athletes/${row.original.opponent?.attributes.identityPersonId}`} style={{ textDecoration: "none" }}>
-						{renderedCellValue}
-					</Link>
+					</Text> : !row.original.opponent?.attributes.identityPersonId ?
+						<Text>{renderedCellValue}</Text> :
+						<Link target="_blank" to={`/athletes/${row.original.opponent?.attributes.identityPersonId}`} style={{ textDecoration: "none" }}>
+							{renderedCellValue}
+						</Link>
 			),
 		},
 		{

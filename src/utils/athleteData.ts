@@ -29,7 +29,10 @@ export async function fetchMergedAthleteData(
 	onProgress?: ProgressCallback,
 	onLoadCount?: LoadCountCallback,
 ): Promise<AthleteDataBundle> {
-	const aliases = expandToAliases(id);
+	const allAliases = expandToAliases(id);
+	const availability = await Promise.all(allAliases.map(alias => FloAPI.prepareArchiveIdentity(alias)));
+	const aliases = allAliases.filter((_, index) => availability[index]);
+	if (!aliases.length) throw new Error("This athlete's identity has not been verified in the archive yet. A lookup has been queued for review.");
 	const canonicalId = getCanonicalId(id);
 	const aliasSet = new Set(aliases);
 	const wrestlerCounts = new Map<string, { loaded: number; total: number }>();
@@ -175,15 +178,24 @@ function rewriteAliasedWrestlers(
 	aliasSet: Set<string>,
 	canonicalId: string,
 ) {
+	// The filtered /wrestlers response is authoritative even when identityPersonId
+	// is omitted. Only registrations returned for these aliases belong to this athlete.
+	const registrationIds = new Set(wrestlers.data.map(wrestler => wrestler.id));
 	for (const wrestler of wrestlers.data) {
-		if (aliasSet.has(wrestler.attributes.identityPersonId)) wrestler.attributes.identityPersonId = canonicalId;
+		wrestler.attributes.identityPersonId = canonicalId;
 	}
 	for (const item of bouts.included) {
-		if (item.type === "wrestler") {
-			item.attributes.identityPersonId = aliasSet.has(item.attributes.identityPersonId)
-				? canonicalId : getCanonicalId(item.attributes.identityPersonId);
+		if (item.type !== "wrestler") continue;
+		const identity = item.attributes.identityPersonId;
+		if (registrationIds.has(item.id) || (identity && aliasSet.has(identity))) {
+			item.attributes.identityPersonId = canonicalId;
+		} else if (identity) {
+			item.attributes.identityPersonId = getCanonicalId(identity);
 		}
 	}
+	// Included expansions may omit the athlete's registration. Keep it available
+	// for the existing winner/opponent joins without discarding expanded attributes.
+	bouts.included = dedupeByObjectId([...bouts.included, ...wrestlers.data]);
 }
 
 function sortWrestlersByEventDate(wrestlers: AthleteWrestlers) {
