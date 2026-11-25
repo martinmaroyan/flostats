@@ -77,7 +77,7 @@ export default class FloAPI {
 		if (!ARCHIVE_API || isDemoMode()) return true;
 		const url = ARCHIVE_API + "/resolution?identityPersonId=" + encodeURIComponent(id);
 		const response = await fetch(url);
-		if (!response.ok) throw new Error("The archive is temporarily unavailable. Please try again later.");
+		if (!response.ok) throw new Error("Match history is temporarily unavailable. Please try again later.");
 		const state = await response.json() as { state: string; linkedRegistrations: number };
 		if (state.state === "complete" || (state.linkedRegistrations > 0 && state.state !== "evidence_ready")) return true;
 		const queued = await fetch(url, { method: "POST" });

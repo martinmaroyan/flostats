@@ -1,7 +1,7 @@
-import { siteBase, isDemoMode } from "./demo/mode";
+import { siteBase } from "./demo/mode";
 import DataError from "./components/DataError";
 import React from "react";
-import { Alert, Anchor, Badge, Center, Checkbox, Group, Stack, Tooltip } from "@mantine/core";
+import { Anchor, Badge, Center, Checkbox, Group, Stack, Tooltip } from "@mantine/core";
 import { IconLink } from "@tabler/icons-react";
 import AthleteLoadingPanel, { LoadCounters } from "./components/AthleteLoadingPanel";
 import { nprogress } from "@mantine/nprogress";
@@ -9,7 +9,7 @@ import { Helmet } from "react-helmet-async";
 
 
 import { BoutsResponse, WrestlersResponse } from "./api/types/responses";
-import FloAPI, { ARCHIVE_API } from "./api/FloAPI";
+import FloAPI from "./api/FloAPI";
 import { EventObject } from "./api/types/objects/event";
 import { WrestlerObject } from "./api/types/objects/wrestler";
 import { FloObject } from "./api/types/types";
@@ -62,7 +62,6 @@ export default function Athletes() {
 
 	const [athleteId, setAthleteId] = React.useState<string | null>(null);
 	const [mergedAliases, setMergedAliases] = React.useState<string[]>([]);
-	const [availableAliasCount, setAvailableAliasCount] = React.useState(0);
 
 	const [startDate, setStartDate] = React.useState<Date | null>(null);
 	const [endDate, setEndDate] = React.useState<Date | null>(null);
@@ -223,7 +222,7 @@ export default function Athletes() {
 		void (async () => {
 			try {
 				nprogress.start();
-				const { aliases, availableAliases, canonicalId, wrestlers: wrestlersResponse, bouts: boutsResponse, basicInfo } = await fetchMergedAthleteData(
+				const { aliases, canonicalId, wrestlers: wrestlersResponse, bouts: boutsResponse, basicInfo } = await fetchMergedAthleteData(
 					id,
 					progress => {
 						if (cancelled) return;
@@ -242,7 +241,6 @@ export default function Athletes() {
 				setWrestlers(wrestlersResponse);
 				setBasicInfo(basicInfo);
 				setMergedAliases(aliases.length > 1 ? aliases : []);
-				setAvailableAliasCount(availableAliases.length);
 
 				document.title = `${basicInfo.name} - FloStats`;
 
@@ -321,7 +319,6 @@ export default function Athletes() {
 
 	return (
 		<Stack w="100%" align="center">
-			{ARCHIVE_API && !isDemoMode() && <Alert color="blue" w="100%">Archived match history. Missing events or unresolved opponent identities can affect these statistics.</Alert>}
 			{loadError && <DataError title="Unable to load athlete" message={loadError} />}
 			{basicInfo && athleteStats && (
 				<Helmet>
@@ -376,7 +373,7 @@ export default function Athletes() {
 				</Center>
 			) : (
 				<>
-					{mergedAliases.length > 1 ? <MergedProfilesBadge aliases={mergedAliases} canonical={athleteId} availableCount={availableAliasCount} /> : null}
+					{mergedAliases.length > 1 ? <MergedProfilesBadge aliases={mergedAliases} /> : null}
 					{basicInfo ? <GeneralInfoDisplay info={basicInfo} setIgnoredTeams={teams => setFilter({ ...filter, ignoredTeams: teams })} reset={false} setReset={() => {}} /> : null}
 					{athleteId && (
 						<Anchor
@@ -425,14 +422,12 @@ export default function Athletes() {
 	);
 }
 
-function MergedProfilesBadge({ aliases, canonical, availableCount }: { aliases: string[]; canonical: string | null; availableCount: number }) {
-	const others = aliases.filter(a => a !== canonical);
-	const label = `Merged from ${aliases.length} FloWrestling profiles${availableCount < aliases.length ? ` (${availableCount} archived)` : ""}`;
+function MergedProfilesBadge({ aliases }: { aliases: string[] }) {
+	const label = `Merged from ${aliases.length} profiles`;
 	return (
 		<Tooltip
-			multiline
-			w={360}
-			label={`This group contains ${aliases.length} separate FloWrestling identityPersonIds${others.length ? ` (other ids: ${others.map(o => o.slice(0, 8)).join(", ")})` : ""}. ${availableCount < aliases.length ? `Archive data is currently available for ${availableCount} of these profiles.` : "All linked profiles contribute to this view."}`}
+			label={aliases.join("\n")}
+			styles={{ tooltip: { whiteSpace: "pre-line", fontFamily: "monospace" } }}
 		>
 			<Badge variant="light" color="blue" leftSection={<IconLink size={12} />} size="sm">
 				{label}

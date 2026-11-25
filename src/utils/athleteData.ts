@@ -33,7 +33,7 @@ export async function fetchMergedAthleteData(
 	const allAliases = expandToAliases(id);
 	const availability = await Promise.all(allAliases.map(alias => FloAPI.prepareArchiveIdentity(alias)));
 	const aliases = allAliases.filter((_, index) => availability[index]);
-	if (!aliases.length) throw new Error("This athlete's identity has not been verified in the archive yet. A lookup has been queued for review.");
+	if (!aliases.length) throw new Error("Match history is not available for this athlete yet. A lookup has been requested.");
 	const canonicalId = getCanonicalId(id);
 	const aliasSet = new Set(aliases);
 	const wrestlerCounts = new Map<string, { loaded: number; total: number }>();

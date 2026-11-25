@@ -326,7 +326,7 @@ function dedupByCanonical<T>(items: T[], getId: (item: T) => string): { item: T;
 
 function MergedBadge({ group }: { group: AliasGroup }) {
 	return (
-		<Tooltip label={`Merged from ${group.length} profiles: ${group.map(id => id.slice(0, 8)).join(", ")}`}>
+		<Tooltip label={group.join("\n")} styles={{ tooltip: { whiteSpace: "pre-line", fontFamily: "monospace" } }}>
 			<Badge size="xs" variant="light" color="blue" leftSection={<IconLink size={10} />}>merged</Badge>
 		</Tooltip>
 	);
